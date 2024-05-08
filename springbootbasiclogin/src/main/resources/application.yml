@@ -1,0 +1,36 @@
+spring:
+  r2dbc:
+    username: postgres
+    password: root
+    url: r2dbc:postgresql://localhost:5432/security_assignment
+  flyway:
+    username: ${spring.r2dbc.username}
+    password: ${spring.r2dbc.password}
+    url: jdbc:postgresql://localhost:5432/security_assignment
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  main:
+    banner-mode: off
+  #for email (localhost)
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+
+logging:
+  level:
+    #set root logging to "WARN"
+    root: WARN
+    org:
+      springframework:
+        # set spring security logging level to "WARN"
+        security: WARN
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+

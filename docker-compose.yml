@@ -1,0 +1,12 @@
+services:
+  maildev:
+    image: maildev/maildev
+    container_name: my_maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"
+    volumes:
+      - maildev_data:/usr/src/app
+
+volumes:
+  maildev_data:

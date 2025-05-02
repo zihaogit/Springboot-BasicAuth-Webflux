@@ -14,7 +14,7 @@
 	<name>springbootbasiclogin</name>
 	<description>Springboot-BasicAuth-Webflux</description>
 	<properties>
-		<java.version>22</java.version>
+		<java.version>21</java.version>
 	</properties>
 	<dependencies>
 		<!--	Spring Data R2DBC	-->
@@ -86,6 +86,12 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+		<!-- Add Trace ID to exception -->
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-tracing-bridge-brave</artifactId>
+			<scope>compile</scope>
 		</dependency>
 	</dependencies>
 

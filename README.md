@@ -55,3 +55,10 @@ Username : Lewis1
 Password : test1234
 ```
 
+### Postman - Login (Admin)
+You can login as admin by using the following curl on the Postman
+ ```sh
+curl --location --request POST 'http://localhost:8080/login' \
+--header 'Authorization: Basic TGV3aXMxOnRlc3QxMjM0'
+```
+

@@ -7,7 +7,7 @@ spring:
     username: ${spring.r2dbc.username}
     password: ${spring.r2dbc.password}
     url: jdbc:postgresql://localhost:5432/security_assignment
-    locations: classpath:db/migration
+    locations: classpath:db/migration/common,classpath:db/migration/dev
     baseline-on-migrate: true
   main:
     banner-mode: off
@@ -23,14 +23,23 @@ spring:
 logging:
   level:
     #set root logging to "WARN"
-    root: WARN
+    root: INFO
     org:
       springframework:
-        # set spring security logging level to "WARN"
-        security: WARN
+        # set spring security logging level to "INFO"
+        security: INFO
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+auth:
+  mail-config:
+    provider: log
+    from: noreply@yourdomain.com
+    name: XXX Company
+
+
+
 
 

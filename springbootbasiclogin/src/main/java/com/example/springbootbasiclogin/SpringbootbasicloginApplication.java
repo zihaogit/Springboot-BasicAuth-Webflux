@@ -10,8 +10,8 @@ import org.springframework.web.reactive.config.EnableWebFlux;
 @EnableAspectJAutoProxy
 public class SpringbootbasicloginApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(SpringbootbasicloginApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(SpringbootbasicloginApplication.class, args);
+    }
 
 }

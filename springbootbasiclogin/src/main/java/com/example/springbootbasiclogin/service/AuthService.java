@@ -1,16 +1,19 @@
 package com.example.springbootbasiclogin.service;
 
+import com.example.springbootbasiclogin.constant.AuthResponseCode;
+import com.example.springbootbasiclogin.dao.auth.AuthEmail;
+import com.example.springbootbasiclogin.dao.auth.RegisterRequest;
+import com.example.springbootbasiclogin.dao.auth.ResetPasswordRequest;
 import com.example.springbootbasiclogin.entity.Roles;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.entity.VerificationToken;
+import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.repo.RoleRepository;
 import com.example.springbootbasiclogin.repo.UserRepository;
 import com.example.springbootbasiclogin.repo.VerificationTokenRepository;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import com.example.springbootbasiclogin.service.mail.EmailService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.User;
@@ -19,27 +22,33 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.io.UnsupportedEncodingException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
-public class AuthService implements ReactiveUserDetailsService{
+@Slf4j
+public class AuthService implements ReactiveUserDetailsService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final VerificationTokenRepository verificationTokenRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final JavaMailSender mailSender;
+    private final EmailService emailService;
 
     @Autowired
-    public AuthService(UserRepository userRepository, RoleRepository roleRepository, VerificationTokenRepository verificationTokenRepository, BCryptPasswordEncoder passwordEncoder, JavaMailSender mailSender) {
+    public AuthService(
+            UserRepository userRepository,
+            RoleRepository roleRepository,
+            VerificationTokenRepository verificationTokenRepository,
+            BCryptPasswordEncoder passwordEncoder,
+            EmailService emailService
+    ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.passwordEncoder = passwordEncoder;
-        this.mailSender = mailSender;
+        this.emailService = emailService;
     }
 
     //find the User + Roles using the username when require by basic auth
@@ -48,68 +57,93 @@ public class AuthService implements ReactiveUserDetailsService{
         return userRepository
                 .findByUsername(username)
                 .flatMap(user ->
-                    roleRepository
-                        .findByUserId(user.getId())
-                        .map(Roles::getRole)
-                        .collectList()
-                        .map(roles -> User
-                                .withUsername(user.getUsername())
-                                .password(user.getPassword())
-                                .roles(roles.toArray(new String[0]))
-                                .build()
-                        )
+                        roleRepository
+                                .findByUserId(user.getId())
+                                .map(Roles::getRole)
+                                .collectList()
+                                .map(roles -> User
+                                        .withUsername(user.getUsername())
+                                        .password(user.getPassword())
+                                        .roles(roles.toArray(new String[0]))
+                                        .build()
+                                )
                 );
     }
 
     public Mono<Boolean> loginUser(String username, String password) {
         return userRepository.findByUsername(username)
-            .filter(user -> {
-                //Match the password without {bcrypt} at front
-                return passwordEncoder.matches(password, user.getPassword().substring(8));
-            })
-            .flatMap(user -> {
-                //updated "active" status to true
-                user.setActive(true);
-                return userRepository.save(user)
-                        .thenReturn(true);
-            })
-            .defaultIfEmpty(false);
+                .filter(user -> {
+                    //Match the password without {bcrypt} at front
+                    return passwordEncoder.matches(password, user.getPassword().substring(8));
+                })
+                .flatMap(user -> {
+                    //updated "active" status to true
+                    user.setActive(true);
+                    return userRepository.save(user)
+                            .thenReturn(true);
+                })
+                .defaultIfEmpty(false);
     }
 
-    public Mono<Users> registerUser(String username, String password, String role, String email) {
-        //create new user
-        Users user= new Users();
-        user.setUsername(username);
-        user.setPassword("{bcrypt}"+ passwordEncoder.encode(password));
-        user.setEmail(email);
+    public Mono<Users> registerUser(RegisterRequest registerRequest) {
+        return userRepository.findByUsername(registerRequest.getUsername())
+                .flatMap(existingUser -> {
+                    if (!existingUser.isVerified()) {
+                        // Resend verification email
+                        return generateToken(existingUser)
+                                .doOnSuccess(token -> {
+                                    String subject = "Email Verification";
+                                    String content = "Please click the link below to verify your registration:<br>"
+                                            + "<h3><a href=\"[[URL]]\">VERIFY</a></h3>"
+                                            + "Thank you,<br>Your company name.";
 
-        return userRepository.save(user) //save the user to db
-                .flatMap(savedUser -> {
-                    //create new role
-                    Roles roles = new Roles();
-                    roles.setUserId(savedUser.getId());
-                    roles.setRole(role);
-                    //create new verificationToken
-                    Mono<VerificationToken> savedToken = generateToken(user);
+                                    String verifyURL = "http://localhost:8080/verify-email/" + token.getToken();
+                                    content = content.replace("[[URL]]", verifyURL);
 
-                    return roleRepository.save(roles)  //save the role to db
-                            .then(savedToken
-                                    .doOnSuccess(tokenSaved -> {
-                                        String subject = "Email Verification";
-                                        String content = "Please click the link below to verify your registration:<br>"
-                                                + "<h3><a href=\"[[URL]]\">VERIFY</a></h3>"
-                                                + "Thank you,<br>"
-                                                + "Your company name.";
+                                    AuthEmail authEmail = new AuthEmail(existingUser.getEmail(), subject, content);
+                                    emailService.sendVerifyLink(authEmail, verifyURL);
+                                })
+                                .thenReturn(existingUser);
+                    } else {
+                        // User is already verified
+                        log.error("User is already registered and verified.");
+                        return Mono.error(new CustomException(AuthResponseCode.AUTH_000109_USER_IS_REGISTERED));
+                    }
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    // Create new user
+                    Users newUser = new Users();
+                    newUser.setUsername(registerRequest.getUsername());
+                    newUser.setPassword("{bcrypt}" + passwordEncoder.encode(registerRequest.getPassword()));
+                    newUser.setEmail(registerRequest.getEmail());
+                    newUser.setVerified(false);
 
-                                        String verifyURL =  "http://localhost:8080/verify-email/" + tokenSaved.getToken();
-                                        content = content.replace("[[URL]]", verifyURL);
+                    return userRepository.save(newUser)
+                            .flatMap(savedUser -> {
+                                Roles role = new Roles();
+                                role.setUserId(savedUser.getId());
+                                role.setRole(registerRequest.getRole());
 
-                                        sendEmail(savedUser.getEmail(), subject, content);
-                                    })
-                                    .thenReturn(savedUser)
-                            );
-                });
+                                Mono<VerificationToken> tokenMono = generateToken(savedUser);
+
+                                return roleRepository.save(role)
+                                        .then(tokenMono.doOnSuccess(token -> {
+                                            String subject = "Email Verification";
+                                            String content = "Please click the link below to verify your registration:<br>"
+                                                    + "<h3><a href=\"[[URL]]\">VERIFY</a></h3>"
+                                                    + "Thank you,<br>Your company name.";
+
+                                            String verifyURL = "http://localhost:8080/verify-email/" + token.getToken();
+                                            content = content.replace("[[URL]]", verifyURL);
+
+                                            AuthEmail authEmail = new AuthEmail(savedUser.getEmail(), subject, content);
+                                            emailService.sendVerifyLink(authEmail, verifyURL);
+                                        }))
+                                        .thenReturn(savedUser);
+                            });
+                }));
     }
+
 
     public Mono<String> verifyEmail(String verificationToken) {
         return verificationTokenRepository.findByToken(verificationToken)
@@ -127,19 +161,20 @@ public class AuthService implements ReactiveUserDetailsService{
                 });
     }
 
-    public Mono<String> forgetPassword(String email){
+    public Mono<String> forgetPassword(String email) {
         return userRepository.findByEmail(email)
-                .flatMap(user ->{
+                .flatMap(user -> {
                     Mono<VerificationToken> savedToken = generateToken(user);
                     return savedToken
-                            .doOnSuccess(tokenSaved ->{
+                            .doOnSuccess(tokenSaved -> {
                                 String subject = "Reset Password";
                                 String content = "Forget Password? Please click the link below to to change your password:<br>"
-                                        + "<h3>http://localhost:8080/reset-password/" + tokenSaved.getToken()+ "</h3>"
+                                        + "<h3>http://localhost:8080/reset-password/" + tokenSaved.getToken() + "</h3>"
                                         + "Bye Bye, Regards from:<br>"
                                         + "Your company name.";
 
-                                sendEmail(user.getEmail(), subject, content);
+                                AuthEmail authEmail = new AuthEmail(user.getEmail(), subject, content);
+                                emailService.sendVerifyLink(authEmail, tokenSaved.getToken());
                             })
                             .thenReturn("Do check your email for resetting password")
                             .defaultIfEmpty("Error! cannot save Verification Token");
@@ -147,8 +182,8 @@ public class AuthService implements ReactiveUserDetailsService{
                 .defaultIfEmpty("Email is not registered");
     }
 
-    public Mono<String> resetPassword(String verificationToken, String password) {
-        return verificationTokenRepository.findByToken(verificationToken)
+    public Mono<String> resetPassword(ResetPasswordRequest resetPasswordRequest) {
+        return verificationTokenRepository.findByToken(resetPasswordRequest.getVerificationToken())
                 .flatMap(token -> {
                     if (isTokenExpired(token.getCreationTime())) {
                         return Mono.just("Verification token has expired.");
@@ -157,7 +192,7 @@ public class AuthService implements ReactiveUserDetailsService{
                     return userRepository.findById(token.getUserId())
                             .flatMap(user -> {
                                 // Updated the password
-                                user.setPassword("{bcrypt}"+ passwordEncoder.encode(password));
+                                user.setPassword("{bcrypt}" + passwordEncoder.encode(resetPasswordRequest.getPassword()));
                                 return userRepository.save(user);
                             })
                             .thenReturn("Password Reset successfully.");
@@ -172,7 +207,7 @@ public class AuthService implements ReactiveUserDetailsService{
                             .doOnSuccess(success -> SecurityContextHolder.clearContext())
                             .thenReturn("Logout successful");
                 })
-                .defaultIfEmpty("No User found with username: "+ username);
+                .defaultIfEmpty("No User found with username: " + username);
     }
 
     private Mono<VerificationToken> generateToken(Users savedUser) {
@@ -191,25 +226,6 @@ public class AuthService implements ReactiveUserDetailsService{
                 }));
     }
 
-    private void sendEmail(String to,String subject, String text) {
-        String fromAddress = "noreply@yourdomain.com";
-        String senderName = "Your Company";
-
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message);
-
-        try {
-            helper.setFrom(fromAddress, senderName);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(text, true);
-        } catch (MessagingException | UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
-        }
-
-        mailSender.send(message);
-    }
-
     private boolean isTokenExpired(LocalDateTime creationTime) {
         LocalDateTime now = LocalDateTime.now();
         Duration duration = Duration.between(creationTime, now);
@@ -217,7 +233,7 @@ public class AuthService implements ReactiveUserDetailsService{
     }
 
     //Delete the Roles + VerificationToken + User using id
-    public Mono<String> deleteUsersCascade(int userId){
+    public Mono<String> deleteUsersCascade(int userId) {
         return roleRepository.deleteByUserId(userId)
                 .then(verificationTokenRepository.deleteByUserId(userId))
                 .then(userRepository.deleteById(userId)

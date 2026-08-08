@@ -1,88 +1,124 @@
-# Springboot-Basic-Login: Spring Webflux + R2dbc
+# Spring Boot WebFlux Authentication & Authorization Service
 
-<p> This repository contains a SpringBoot application that works with the basic authentication <b>(email and password)</b> and authorization <b>(user/ admin)</b> </p>
+A reactive, non-blocking Spring Boot 3 application built with **Spring WebFlux**, **Spring Data R2DBC**, **Spring Security**, and **PostgreSQL**. Featuring a dual authentication system (**Basic Auth** and **JWT Access/Refresh Tokens**), role-based access control via custom AOP annotations (`@Authenticated`), Flyway database migrations, and MailDev integration for email/OTP verification.
 
-## Setup
+---
+
+## 🚀 Features
+
+- **Reactive Core**: Pure non-blocking reactive stack using Spring WebFlux & Spring Data R2DBC.
+- **Dual Authentication**: Supports both **HTTP Basic Authentication** and **JWT (JSON Web Tokens)**.
+- **Token Management**: Issues short-lived Access Tokens and long-lived Refresh Tokens with a dedicated `/auths/refresh` endpoint.
+- **Role-Based Authorization**: Fine-grained access control using a custom `@Authenticated(roles = {"ADMIN", "USER"})` aspect.
+- **Email & OTP Verification**: Account email verification and password resets via 6-digit OTP codes.
+- **Database Migrations**: Automatic schema and seed data migrations powered by **Flyway**.
+- **Containerized Environment**: One-command setup for PostgreSQL 17 and MailDev via Docker Compose.
+- **API Documentation**: Interactive Swagger UI (`/swagger-ui.html`).
+- **Postman Ready**: Pre-configured Postman collection & environment files provided in the `postman/` directory.
+
+---
+
+## 🛠️ Tech Stack & Prerequisites
+
+### Technologies
+- **Java**: 21
+- **Framework**: Spring Boot 3.x (WebFlux, Security, AOP, Validation)
+- **Database**: PostgreSQL 17 + Spring Data R2DBC
+- **Migrations**: Flyway
+- **Email**: MailDev (SMTP testing server)
+- **Build Tool**: Maven (`./mvnw`)
 
 ### Prerequisites
+Ensure the following tools are installed on your machine:
+- **Java 21 JDK**
+- **Git**
+- **Docker Desktop** (for running PostgreSQL and MailDev)
+- **Postman** (optional, for API testing)
 
-You will need to pre-installed and basic configure the following software on ypur computer
+---
 
-* [Git](http://git-scm.com/): simply running `git clone https://github.com/laggerbomb/Springboot-Basic-Login.git` to
-  clone this repo.
-* [intellij](https://www.jetbrains.com/idea/download/?fromIDE=&section=windows): An IDE for compiling Spring Boot
-  projects; any Java IDE is acceptable, including Eclipse.
-* [Docker Desktop](https://docs.docker.com/get-docker/): To effortlessly set up the MailDev server by running the
-  docker-compose.yml file
-* [Postgres](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads): To install PostgreSQL server (
-  Suggest version 15/16 )
-* [pgAdmin4](https://www.pgadmin.org/download/): To setup and monitor PostgreSQL database
-* [Postman](https://www.postman.com/): To send requests, inspect responses, and ensure seamless communication between
-  different components of your application.
+## ⚡ Quick Start
 
-### MailDev Installation via Docker
-
-At the of the project directory, there exist two files [Docker compose file](./docker-compose.yml)
-and [environment variables configuration file](./.env). Kindly configure these 2 files, before running the command
-below:
-
+### 1. Clone the Repository
+```bash
+git clone https://github.com/zihaogit/Springboot-BasicAuth-Webflux.git
+cd Springboot-BasicAuth-Webflux
 ```
+
+### 2. Configure Environment & Start Docker Containers
+Ensure your `.env` file exists at the root directory (or configure `docker-compose.yml`). Then start PostgreSQL and MailDev:
+
+```bash
 docker compose up -d
 ```
 
-### PostgreSQL Database Setup
+This will launch:
+- **PostgreSQL Database**: `localhost:5432`
+- **MailDev Web Interface**: [http://localhost:1080](http://localhost:1080)
+- **MailDev SMTP Server**: `localhost:1025`
 
-Create new database which is the same name to the value of "POSTGRES_DB" in
-the [environment variables configuration file](./.env). In my case the database name is - security_assignment
+### 3. Run the Spring Boot Application
+Navigate to the application folder and run using the Maven wrapper:
 
-### Maven build
-
-The `springboot-basic-login` directory contains all the code for our Spring Boot Project. The Maven build should be
-running automatically, if it not running, open the 'Maven -> Execute Maven Goal' and run the following command
-
-```
-mvn clean install
-```
-
-Then u can run the project using `mvn spring-boot:run` or click run icon
-
-## Endpoints
-
-### Postman - Register (Admin)
-
-You can create new user by using the following curl on the Postman
-
- ```sh
-curl --location 'http://localhost:8080/register' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "username": "Lewis1",
-  "password": "test1234",
-  "email": "lewis@gmail.com",
-  "role": "ADMIN"
-}'
+```bash
+cd springbootbasiclogin
+./mvnw spring-boot:run
 ```
 
-### Maildev - Verify Email
+The application will start on `http://localhost:8080`.
 
-You can navigate to the `http://localhost:1080` to receive email.
+---
 
-### Swagger - API Documentation
+## 🧪 Running Unit Tests
 
-You can access the API documentation and test the functionality by navigating to `http://localhost:8080/swagger-ui.html`
-before proceeding to test it on Postman.
+To run the complete unit test suite:
 
-You might require to enter the ADMIN role username to login into the Swagger. In our case
-
-```
-Username : Lewis1
-Password : test1234
+```bash
+cd springbootbasiclogin
+./mvnw test
 ```
 
-### Postman - Login (Admin)
-You can login as admin by using the following curl on the Postman
- ```sh
-curl --location --request POST 'http://localhost:8080/login' \
---header 'Authorization: Basic TGV3aXMxOnRlc3QxMjM0'
-```
+---
 
+## 📖 API Documentation & Endpoints
+
+### Swagger UI
+Access the interactive OpenAPI / Swagger UI at:
+👉 **[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)**
+
+### MailDev (Email / OTP Inbox)
+Check sent verification emails and OTP codes at:
+👉 **[http://localhost:1080](http://localhost:1080)**
+
+---
+
+### Key API Endpoints Summary
+
+#### 🔑 Authentication (`/auths`)
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auths/register` | Register a new user | None |
+| `GET` | `/auths/verify-email` | Verify account email via OTP (`?verifyOTP=123456`) | None |
+| `POST` | `/auths/login` | Login via JSON body or Basic Auth header -> returns JWT tokens | None / Basic Auth |
+| `POST` | `/auths/refresh` | Obtain new access token using refresh token | None |
+| `POST` | `/auths/fp` | Request password reset email (`?email=...`) | None |
+| `POST` | `/auths/reset-password` | Reset password using OTP code | None |
+| `GET` | `/auths/logout` | Invalidate session / Logout | `@Authenticated` |
+
+#### 👤 User Management (`/users`)
+| Method | Endpoint | Description | Role Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/users/all` | Get all registered users | `ADMIN` |
+| `GET` | `/users` | Get user details (`?userId=1`) | `USER`, `ADMIN` |
+| `PUT` | `/users/update` | Update user details (`?userId=1`) | `USER`, `ADMIN` |
+| `DELETE` | `/users` | Delete user (`?userId=1`) | `ADMIN` |
+
+---
+
+## 📬 Postman Collection
+
+A pre-configured Postman Collection and Environment are included in the repository:
+- `postman/Springboot-BasicAuth-Webflux.postman_collection.json`
+- `postman/Local.postman_environment.json`
+
+Import both files into Postman to test all endpoints locally.

@@ -1,6 +1,6 @@
 package com.example.springbootbasiclogin.service.mail;
 
-import com.example.springbootbasiclogin.dao.auth.AuthEmail;
+import com.example.springbootbasiclogin.model.AuthEmail;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;

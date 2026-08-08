@@ -55,9 +55,9 @@ INSERT INTO roles (
 ) VALUES
     (
         (SELECT id FROM users WHERE username = 'JohnDoe'), -- Reference JohnDoe's user_id
-        'ADMIN'
+        'USER'
     ),
     (
         (SELECT id FROM users WHERE username = 'admin'), -- Reference admin's user_id
-        'USER'
+        'ADMIN'
     );

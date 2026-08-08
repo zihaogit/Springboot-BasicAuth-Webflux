@@ -2,7 +2,7 @@ package com.example.springbootbasiclogin.service.mail;
 
 import com.example.springbootbasiclogin.config.AuthPropertiesConfig;
 import com.example.springbootbasiclogin.constant.AuthResponseCode;
-import com.example.springbootbasiclogin.dao.auth.AuthEmail;
+import com.example.springbootbasiclogin.model.AuthEmail;
 import com.example.springbootbasiclogin.exception.CustomException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;

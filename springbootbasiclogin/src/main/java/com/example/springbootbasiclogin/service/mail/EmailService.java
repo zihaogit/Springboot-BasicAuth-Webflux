@@ -1,6 +1,6 @@
 package com.example.springbootbasiclogin.service.mail;
 
-import com.example.springbootbasiclogin.dao.auth.AuthEmail;
+import com.example.springbootbasiclogin.model.AuthEmail;
 
 public interface EmailService {
     void sendVerifyLink(AuthEmail authEmail, String verifyLink);

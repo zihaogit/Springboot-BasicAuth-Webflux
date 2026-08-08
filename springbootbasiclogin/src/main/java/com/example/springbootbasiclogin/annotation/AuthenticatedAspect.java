@@ -2,58 +2,83 @@ package com.example.springbootbasiclogin.annotation;
 
 import com.example.springbootbasiclogin.constant.AuthResponseCode;
 import com.example.springbootbasiclogin.exception.CustomException;
-import com.example.springbootbasiclogin.helper.BasicAuthHelper;
 import lombok.extern.slf4j.Slf4j;
-import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.server.ServerWebExchange;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Aspect
 @Configuration
 @Slf4j
 public class AuthenticatedAspect {
 
-    private final BasicAuthHelper basicAuthHelper;
+    @Around("@annotation(com.example.springbootbasiclogin.annotation.Authenticated)")
+    public Object checkSecurityContext(ProceedingJoinPoint joinPoint) {
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        Authenticated authenticated = method.getAnnotation(Authenticated.class);
+        String[] requiredRoles = authenticated.roles();
 
-    @Autowired
-    public AuthenticatedAspect(BasicAuthHelper basicAuthHelper) {
-        this.basicAuthHelper = basicAuthHelper;
-    }
+        Class<?> returnType = signature.getReturnType();
+        boolean isFlux = Flux.class.isAssignableFrom(returnType);
 
-    @Before("@annotation(com.example.springbootbasiclogin.annotation.Authenticated)")
-    public void setBasicAuthHelper(JoinPoint joinPoint) {
-        try {
-            //Getting the ServerWebExchange
-            ServerWebExchange exchange = (ServerWebExchange) joinPoint.getArgs()[0];
+        Mono<Object> resultMono = ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .filter(auth -> auth != null && auth.isAuthenticated())
+                .switchIfEmpty(Mono.error(new CustomException(AuthResponseCode.AUTH_000401_UNAUTHORIZED)))
+                .flatMap(auth -> {
+                    if (requiredRoles.length > 0) {
+                        Set<String> userRoles = auth.getAuthorities().stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .map(r -> r.startsWith("ROLE_") ? r.substring(5).toUpperCase() : r.toUpperCase())
+                                .collect(Collectors.toSet());
 
-            /* --- Authentication Happen Here --- */
-            //Check whether the people is Authenticated
-            basicAuthHelper.checkAuthentication(exchange)
-                    .subscribe(isAuthenticated -> {
-                        if (Boolean.FALSE.equals(isAuthenticated)) {
-                            throw new CustomException(AuthResponseCode.AUTH_000401_UNAUTHORIZED);
+                        boolean hasRole = Arrays.stream(requiredRoles)
+                                .map(String::toUpperCase)
+                                .anyMatch(userRoles::contains);
+
+                        if (!hasRole) {
+                            log.warn("Access denied for user {}. Required roles: {}, user roles: {}",
+                                    auth.getName(), Arrays.toString(requiredRoles), userRoles);
+                            return Mono.error(new CustomException(AuthResponseCode.AUTH_000403_ACCESS_DENIED));
                         }
-                    }, error -> {
-                        throw new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION, error);
-                    });
+                    }
 
-            /* --- Authorization Happen Here --- */
-            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-            Method method = signature.getMethod();
-            Authenticated authenticated = method.getAnnotation(Authenticated.class);
-            //Get the roles passing in the Custom Annotation
-            String[] requiredRoles = authenticated.roles();
-            log.info("Required Role: {}", Arrays.toString(requiredRoles));
+                    try {
+                        Object proceedResult = joinPoint.proceed();
+                        if (proceedResult instanceof Mono) {
+                            return (Mono<?>) proceedResult;
+                        } else if (proceedResult instanceof Flux) {
+                            return ((Flux<?>) proceedResult).collectList();
+                        } else {
+                            return Mono.justOrEmpty(proceedResult);
+                        }
+                    } catch (Throwable e) {
+                        return Mono.error(new CustomException(AuthResponseCode.AUTH_000500_SERVER_ERROR, e));
+                    }
+                });
 
-        } catch (Exception e) {
-            throw new CustomException(AuthResponseCode.AUTH_000520_NOT_FOUND, e);
+        if (isFlux) {
+            return resultMono.flatMapMany(obj -> {
+                if (obj instanceof List) {
+                    return Flux.fromIterable((List<?>) obj);
+                }
+                return Flux.just(obj);
+            });
         }
+        return resultMono;
     }
 }

@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.dao.auth;
+package com.example.springbootbasiclogin.model;
 
 import lombok.Data;
 

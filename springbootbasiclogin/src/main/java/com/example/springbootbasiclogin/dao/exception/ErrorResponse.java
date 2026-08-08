@@ -1,5 +1,6 @@
-package com.example.springbootbasiclogin.dao;
+package com.example.springbootbasiclogin.dao.exception;
 
+import com.example.springbootbasiclogin.dao.BaseResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;

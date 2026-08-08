@@ -13,7 +13,7 @@ spring:
     banner-mode: off
   #for email (localhost)
   mail:
-    host: localhost
+    host: log
     port: 1025
     properties:
       mail:
@@ -38,6 +38,11 @@ auth:
     provider: log
     from: noreply@yourdomain.com
     name: XXX Company
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-long-random-secret-at-least-32-chars}
+    issuer: springboot-basiclogin
+    access-token-ttl: 2h
+    refresh-token-ttl: 24h
 
 
 

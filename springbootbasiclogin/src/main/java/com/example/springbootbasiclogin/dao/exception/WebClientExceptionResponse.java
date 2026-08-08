@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.dao;
+package com.example.springbootbasiclogin.dao.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;

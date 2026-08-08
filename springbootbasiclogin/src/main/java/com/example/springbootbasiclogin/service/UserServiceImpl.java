@@ -1,37 +1,30 @@
 package com.example.springbootbasiclogin.service;
 
+import com.example.springbootbasiclogin.constant.AuthResponseCode;
 import com.example.springbootbasiclogin.entity.Users;
+import com.example.springbootbasiclogin.exception.CustomException;
+import com.example.springbootbasiclogin.repo.RoleRepository;
 import com.example.springbootbasiclogin.repo.UserRepository;
+import com.example.springbootbasiclogin.repo.VerificationTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.Field;
-import java.util.NoSuchElementException;
 
 @Service
-public class UserServiceImpl implements UserService{
+public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final VerificationTokenRepository verificationTokenRepository;
 
     @Autowired
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, RoleRepository roleRepository, VerificationTokenRepository verificationTokenRepository) {
         this.userRepository = userRepository;
-    }
-
-    /* Auth and Autz */
-    @Override
-    public Mono<Boolean> isUsernameMatching(int userId, String username) {
-        return userRepository.findUsernameById(userId)
-                .switchIfEmpty(Mono.error(new NoSuchElementException("No user found with the provided ID: " + userId)))
-                .map(username::equals)
-                .defaultIfEmpty(false);
-    }
-
-    @Override
-    public Mono<Users> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+        this.roleRepository = roleRepository;
+        this.verificationTokenRepository = verificationTokenRepository;
     }
 
     /* Managing User Profile */
@@ -43,11 +36,6 @@ public class UserServiceImpl implements UserService{
     @Override
     public Mono<Users> findById(int theId) {
         return userRepository.findById(theId);
-    }
-
-    @Override
-    public Mono<Users> save(Users theUser) {
-        return userRepository.save(theUser);
     }
 
     @Override
@@ -67,7 +55,8 @@ public class UserServiceImpl implements UserService{
                                 field.set(existingUser, value);
                             }
                         } catch (IllegalAccessException e) {
-                            return Mono.error(e); // Propagate the error as Mono.error
+                            String className = field.getDeclaringClass().getName();
+                            throw new CustomException(AuthResponseCode.AUTH_000111_FAILED_ACCESS_MEMBER_CLASS, e, className);
                         }
                     }
 
@@ -78,10 +67,15 @@ public class UserServiceImpl implements UserService{
                 });
     }
 
-
     @Override
-    public Mono<Void> deleteById(int theId) {
-        return userRepository.deleteById(theId);
+    //Delete the Roles + VerificationToken + User using id
+    public Mono<String> deleteById(int userId) {
+        return roleRepository.deleteByUserId(userId)
+                .then(verificationTokenRepository.deleteByUserId(userId))
+                .then(userRepository.deleteById(userId)
+                        .thenReturn("Deleted user id - " + userId)
+                        .defaultIfEmpty("Error delete user id: " + userId + " caused by Cascade")
+                );
     }
 
 }

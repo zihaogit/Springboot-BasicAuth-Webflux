@@ -1,0 +1,5 @@
+# IDE / Tooling configs
+.idea/
+.vscode/
+.ai/
+*.iml

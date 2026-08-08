@@ -1,20 +1,26 @@
 package com.example.springbootbasiclogin.exception;
 
+import com.example.springbootbasiclogin.constant.AuthResponseCode;
 import lombok.Getter;
-import lombok.Setter;
-import org.flywaydb.core.api.ErrorDetails;
-import org.springframework.http.HttpStatus;
 
 @Getter
-@Setter
-public class CustomException extends RuntimeException{
+public class CustomException extends RuntimeException {
 
-    private final HttpStatus status;
-    private final ErrorDetails details;
+    private final AuthResponseCode authResponseCode;
+    private Object[] messageArgs;
 
-    public CustomException(String message, HttpStatus status, ErrorDetails details) {
-        super(message);
-        this.status = status;
-        this.details = details;
+    public CustomException(AuthResponseCode authResponseCode) {
+        this.authResponseCode = authResponseCode;
+    }
+
+    public CustomException(AuthResponseCode authResponseCode, Throwable cause) {
+        super(cause);
+        this.authResponseCode = authResponseCode;
+    }
+
+    public CustomException(AuthResponseCode authResponseCode, Throwable cause, Object... messageArgs) {
+        super(cause);
+        this.authResponseCode = authResponseCode;
+        this.messageArgs = messageArgs;
     }
 }

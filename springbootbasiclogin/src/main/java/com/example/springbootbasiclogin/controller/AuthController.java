@@ -11,7 +11,6 @@ import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.service.AuthService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;

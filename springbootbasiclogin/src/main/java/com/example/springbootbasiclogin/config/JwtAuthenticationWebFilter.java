@@ -16,7 +16,6 @@ import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -51,7 +50,7 @@ public class JwtAuthenticationWebFilter implements WebFilter {
                                 return r.startsWith("ROLE_") ? r : "ROLE_" + r;
                             })
                             .map(SimpleGrantedAuthority::new)
-                            .collect(Collectors.toList());
+                            .toList();
 
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(username, null, authorities);

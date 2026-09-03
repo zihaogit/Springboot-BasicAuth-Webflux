@@ -7,9 +7,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.Optional;
-
-
 @Service
 public class RolesServiceImpl implements RoleService {
 
@@ -17,7 +14,7 @@ public class RolesServiceImpl implements RoleService {
 
     @Autowired
     public RolesServiceImpl(RoleRepository theRoleRepository) {
-        roleRepository= theRoleRepository;
+        this.roleRepository = theRoleRepository;
     }
 
     @Override
@@ -37,15 +34,10 @@ public class RolesServiceImpl implements RoleService {
 
     @Override
     public Mono<Roles> update(int id, Roles theRoles) {
-        return roleRepository.findById(id).map(Optional::of)
-                .defaultIfEmpty(Optional.empty())
-                .flatMap(optionalUser -> {
-                    if(optionalUser.isPresent()){
-                        theRoles.setRoleId(id);
-                        return roleRepository.save(theRoles);
-                    }
-                    //else empty
-                    return Mono.empty();
+        return roleRepository.findById(id)
+                .flatMap(existingRole -> {
+                    theRoles.setRoleId(id);
+                    return roleRepository.save(theRoles);
                 });
     }
 

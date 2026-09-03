@@ -1,8 +1,6 @@
 package com.example.springbootbasiclogin.service;
 
-import com.example.springbootbasiclogin.constant.AuthResponseCode;
 import com.example.springbootbasiclogin.entity.Users;
-import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.repo.RoleRepository;
 import com.example.springbootbasiclogin.repo.UserRepository;
 import com.example.springbootbasiclogin.repo.VerificationTokenRepository;
@@ -10,8 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.lang.reflect.Field;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -42,27 +38,46 @@ public class UserServiceImpl implements UserService {
     public Mono<Users> update(int id, Users theUser) {
         return userRepository.findById(id)
                 .flatMap(existingUser -> {
-                    // Use reflection to get all fields
-                    Field[] fields = Users.class.getDeclaredFields();
-
-                    for (Field field : fields) {
-                        field.setAccessible(true);
-                        try {
-                            // Get the value of the field from theUser
-                            Object value = field.get(theUser);
-                            // Update the field in existingUser only if the value is not null
-                            if (value != null) {
-                                field.set(existingUser, value);
-                            }
-                        } catch (IllegalAccessException e) {
-                            String className = field.getDeclaringClass().getName();
-                            throw new CustomException(AuthResponseCode.AUTH_000111_FAILED_ACCESS_MEMBER_CLASS, e, className);
-                        }
+                    if (theUser.getUsername() != null) {
+                        existingUser.setUsername(theUser.getUsername());
+                    }
+                    if (theUser.getPassword() != null) {
+                        existingUser.setPassword(theUser.getPassword());
+                    }
+                    if (theUser.getFirstName() != null) {
+                        existingUser.setFirstName(theUser.getFirstName());
+                    }
+                    if (theUser.getLastName() != null) {
+                        existingUser.setLastName(theUser.getLastName());
+                    }
+                    if (theUser.getEmail() != null) {
+                        existingUser.setEmail(theUser.getEmail());
+                    }
+                    if (theUser.getAbout() != null) {
+                        existingUser.setAbout(theUser.getAbout());
+                    }
+                    if (theUser.getJobTitle() != null) {
+                        existingUser.setJobTitle(theUser.getJobTitle());
+                    }
+                    if (theUser.getLanguages() != null) {
+                        existingUser.setLanguages(theUser.getLanguages());
+                    }
+                    if (theUser.getSkills() != null) {
+                        existingUser.setSkills(theUser.getSkills());
+                    }
+                    if (theUser.getProjectsAndExperiences() != null) {
+                        existingUser.setProjectsAndExperiences(theUser.getProjectsAndExperiences());
+                    }
+                    if (theUser.getAssignments() != null) {
+                        existingUser.setAssignments(theUser.getAssignments());
+                    }
+                    if (theUser.getProfilePic() != null) {
+                        existingUser.setProfilePic(theUser.getProfilePic());
                     }
 
                     // Set the ID before saving
                     existingUser.setId(id);
-                    //update the data to db
+                    // update the data to db
                     return userRepository.save(existingUser);
                 });
     }

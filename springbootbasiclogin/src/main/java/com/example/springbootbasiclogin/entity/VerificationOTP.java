@@ -66,6 +66,11 @@ public class VerificationOTP implements Persistable<UUID> {
     }
 
     @Override
+    public UUID getId() {
+        return id;
+    }
+
+    @Override
     public boolean isNew() {
         return newRecord;
     }

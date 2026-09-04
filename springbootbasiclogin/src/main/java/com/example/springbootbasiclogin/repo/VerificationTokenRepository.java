@@ -2,9 +2,13 @@ package com.example.springbootbasiclogin.repo;
 
 import com.example.springbootbasiclogin.entity.VerificationOTP;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
+import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
-public interface VerificationTokenRepository extends ReactiveCrudRepository<VerificationOTP, Long> {
+import java.util.UUID;
+
+@Repository
+public interface VerificationTokenRepository extends ReactiveCrudRepository<VerificationOTP, UUID> {
     Mono<VerificationOTP> findByToken(String token);
 
     Mono<VerificationOTP> findByOtp(int otp);

@@ -67,11 +67,17 @@ cd springbootbasiclogin
 
 The application will start on `http://localhost:8080`.
 
+### 🔑 Default Credentials (Seeded)
+| Username | Password | Role | Description |
+| :--- | :--- | :--- | :--- |
+| `admin` | `admin12345` | `ADMIN`, `USER` | Pre-seeded administrator account |
+| `JohnDoe` | `kX9#mQ2$vL7p` | `USER` | Pre-seeded user account (John Doe) |
+
 ---
 
-## 🧪 Running Unit Tests
+## 🧪 Running Tests
 
-To run the complete unit test suite:
+To run the complete unit and integration test suite:
 
 ```bash
 cd springbootbasiclogin
@@ -102,7 +108,7 @@ Check sent verification emails and OTP codes at:
 | `POST` | `/auths/login` | Login via JSON body or Basic Auth header -> returns JWT tokens | None / Basic Auth |
 | `POST` | `/auths/refresh` | Obtain new access token using refresh token | None |
 | `POST` | `/auths/fp` | Request password reset email (`?email=...`) | None |
-| `POST` | `/auths/reset-password` | Reset password using OTP code | None |
+| `POST` | `/auths/reset-password` | Reset password using `verificationToken` UUID (from forget-password email) | None |
 | `GET` | `/auths/logout` | Invalidate session / Logout | `@Authenticated` |
 
 #### 👤 User Management (`/users`)
@@ -117,8 +123,39 @@ Check sent verification emails and OTP codes at:
 
 ## 📬 Postman Collection
 
-A pre-configured Postman Collection and Environment are included in the repository:
-- `postman/Springboot-BasicAuth-Webflux.postman_collection.json`
-- `postman/Local.postman_environment.json`
+A pre-configured Postman Collection is included in the repository and also synced to Postman Cloud (**Webflux Assignment** collection):
 
-Import both files into Postman to test all endpoints locally.
+- `postman/Springboot-BasicAuth-Webflux.postman_collection.json`
+
+Import this file into Postman to test all endpoints locally.
+
+### Collection Variables
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `baseUrl` | `http://localhost:8080` | Application base URL |
+| `basicAuthUser` | `admin` | Login username (seeded admin) |
+| `basicAuthPass` | `admin12345` | Login password (seeded admin) |
+| `username` | `alice` | New user registration username |
+| `password` | `secret123` | New user registration password |
+| `email` | `alice@example.com` | New user registration email |
+| `verifyOTP` | _(from logs)_ | 6-digit OTP from app console after Register |
+| `verificationToken` | _(from logs)_ | UUID from app console after Forget Password |
+| `accessToken` | _(from login)_ | JWT access token returned from Login |
+| `refreshToken` | _(from login)_ | JWT refresh token returned from Login |
+| `userId` | `16` | User ID for user-management endpoints (16 = John Doe) |
+| `johnAuthUser` | `JohnDoe` | Seeded USER role account username |
+| `johnAuthPass` | `kX9#mQ2$vL7p` | Seeded USER role account password |
+
+### Step-by-Step Testing Workflow
+
+1. **Start Docker containers** and the Spring Boot app (`./mvnw spring-boot:run`).
+2. **Register** — send `POST /auths/register` with `username`, `password`, `role`, and `email`.
+3. **Get OTP** — copy the 6-digit OTP printed in the app console (search for `verifyOTP=`).
+4. **Update `verifyOTP`** collection variable with the OTP from step 3.
+5. **Verify Email** — send `GET /auths/verify-email?verifyOTP={{verifyOTP}}`.
+6. **Login** — send `POST /auths/login` (Basic Auth header). Copy `accessToken` and `refreshToken` into collection variables.
+7. **Call user endpoints** using Basic Auth or `Authorization: Bearer {{accessToken}}`.
+8. **Forget Password** — send `POST /auths/fp?email={{email}}`. Copy the UUID token from the app console.
+9. **Update `verificationToken`** collection variable with the UUID.
+10. **Reset Password** — send `POST /auths/reset-password` with `{ "verificationToken": "...", "password": "..." }`.

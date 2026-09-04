@@ -14,16 +14,16 @@ public class LogEmailService implements EmailService {
     public void sendVerifyLink(AuthEmail authEmail, String verifyLink) {
         log.info("Start sending verification link to {}", authEmail.getEmail());
         log.info("Email subject: {}", authEmail.getSubject());
-        log.info("Email content: {}", authEmail.getContent());
+        // codeql[java/sensitive-log] Mock log mail provider intended for local development and testing
         log.info("Verification Link: {}", verifyLink);
         log.info("Finish sending email");
     }
 
     @Override
     public void sendResetPasswordLink(AuthEmail authEmail, String resetLink) {
-        log.info("Start sending verification link to {}", authEmail.getEmail());
+        log.info("Start sending reset password link to {}", authEmail.getEmail());
         log.info("Email subject: {}", authEmail.getSubject());
-        log.info("Email content: {}", authEmail.getContent());
+        // codeql[java/sensitive-log] Mock log mail provider intended for local development and testing
         log.info("Reset Password Link: {}", resetLink);
         log.info("Finish sending email");
     }

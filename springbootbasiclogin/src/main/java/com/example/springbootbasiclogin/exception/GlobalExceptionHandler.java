@@ -41,7 +41,7 @@ public class GlobalExceptionHandler {
         log.error("handleCustomException", ex);
 
         // Choose message based on presence of messageArgs
-        String message = ex.getMessageArgs().length > 0
+        String message = (ex.getMessageArgs() != null && ex.getMessageArgs().length > 0)
                 ? messageUtil.getMessageWithArgs(ex.getAuthResponseCode().getMessageKey(), ex.getMessageArgs())
                 : messageUtil.getMessage(ex.getAuthResponseCode().getMessageKey());
 

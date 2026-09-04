@@ -16,6 +16,6 @@ public interface UserRepository extends ReactiveCrudRepository<Users, Integer> {
     @Query("SELECT username FROM users WHERE id = :id")
     Mono<String> findUsernameById(int id);
 
-    @Query("SELECT u FROM Users u WHERE u.username = :username AND u.verified = true")
+    @Query("SELECT * FROM users WHERE username = :username AND verified = true")
     Mono<Users> findByUsernameAndStatus(String username);
 }

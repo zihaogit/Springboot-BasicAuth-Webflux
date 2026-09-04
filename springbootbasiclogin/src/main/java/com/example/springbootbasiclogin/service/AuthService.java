@@ -27,10 +27,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
@@ -45,7 +44,7 @@ public class AuthService implements ReactiveUserDetailsService {
     private final JwtService jwtService;
     private final AuthPropertiesConfig authPropertiesConfig;
 
-    private static final Random random = new Random();
+    private static final SecureRandom secureRandom = new SecureRandom();
 
     @Autowired
     public AuthService(
@@ -142,7 +141,6 @@ public class AuthService implements ReactiveUserDetailsService {
                 });
     }
 
-    // TODO: Change to sent OTP only (not verify url
     public Mono<Users> registerUser(RegisterRequest registerRequest) {
         return userRepository.findByUsername(registerRequest.getUsername())
                 .flatMap(existingUser -> {
@@ -291,7 +289,7 @@ public class AuthService implements ReactiveUserDetailsService {
     }
 
     private static int generateOTP() {
-        return 100000 + random.nextInt(900000);
+        return 100000 + secureRandom.nextInt(900000);
     }
 
     private boolean isTokenExpired(LocalDateTime creationTime) {

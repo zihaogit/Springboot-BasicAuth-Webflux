@@ -13,7 +13,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -47,7 +46,7 @@ class UserControllerTest {
     void testFindAllUsers() {
         when(userService.findAll()).thenReturn(Flux.just(user1, user2));
 
-        Flux<Users> result = userController.findAll(null);
+        Flux<Users> result = userController.findAll();
 
         StepVerifier.create(result)
                 .expectNext(user1)
@@ -60,7 +59,7 @@ class UserControllerTest {
     void testGetUserById() {
         when(userService.findById(1)).thenReturn(Mono.just(user1));
 
-        Mono<Users> result = userController.getUser(null, 1);
+        Mono<Users> result = userController.getUser(1);
 
         StepVerifier.create(result)
                 .expectNext(user1)
@@ -76,7 +75,7 @@ class UserControllerTest {
 
         when(userService.update(eq(1), eq(updateInfo))).thenReturn(Mono.just(user1));
 
-        Mono<Users> result = userController.updateUser(null, 1, updateInfo);
+        Mono<Users> result = userController.updateUser(1, updateInfo);
 
         StepVerifier.create(result)
                 .expectNext(user1)
@@ -88,7 +87,7 @@ class UserControllerTest {
     void testDeleteUser() {
         when(userService.deleteById(1)).thenReturn(Mono.just("User deleted successfully"));
 
-        Mono<String> result = userController.deleteUser(null, 1, null);
+        Mono<String> result = userController.deleteUser(1);
 
         StepVerifier.create(result)
                 .expectNext("User deleted successfully")

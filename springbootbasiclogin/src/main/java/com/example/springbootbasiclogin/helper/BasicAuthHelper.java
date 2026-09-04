@@ -23,27 +23,31 @@ public class BasicAuthHelper {
     }
 
     public Mono<Boolean> checkAuthentication(ServerWebExchange exchange) {
-        //Access headers through exchange object
+        // Access headers through exchange object
         HttpHeaders headers = exchange.getRequest().getHeaders();
-        String authorizationHeader = headers.getFirst("Authorization");
+        String authorizationHeader = headers.getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Basic")) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Basic ")) {
             log.info("Invalid Authorization Header (missing or not Basic)");
             return Mono.just(false);
         }
 
-        //Remove "Basic" Prefix and decode the authorization header
-        String base64Credentials = authorizationHeader.substring("Basic ".length());
-        String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
+        try {
+            // Remove "Basic " Prefix and decode the authorization header
+            String base64Credentials = authorizationHeader.substring(6).trim();
+            String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
 
-        //Split username and password
-        String[] parts = credentials.split(":", 2);
-        if (parts.length == 2) {
-            String username = parts[0];
-            String password = parts[1];
+            // Split username and password
+            String[] parts = credentials.split(":", 2);
+            if (parts.length == 2) {
+                String username = parts[0];
+                String password = parts[1];
 
-            //check valid password or username here
-            return authService.loginUser(username, password);
+                // check valid password or username here
+                return authService.loginUser(username, password);
+            }
+        } catch (IllegalArgumentException e) {
+            log.warn("Failed to decode Basic auth credentials: {}", e.getMessage());
         }
         return Mono.just(false);
     }

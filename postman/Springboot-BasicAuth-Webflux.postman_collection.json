@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "Springboot BasicAuth Webflux (OTP)",
-    "description": "API collection for Spring Boot WebFlux basic auth with email/phone 6-digit OTP verification.\n\nFlow:\n1. Register (email and/or phone)\n2. Read OTP from app logs (provider=log) or MailDev / SMS log\n3. Verify OTP\n4. Login with Basic Auth\n5. Call user endpoints\n\nOTP expires in 5 minutes.",
+    "description": "API collection for Spring Boot WebFlux basic auth with email OTP verification and JWT tokens.\n\nFlow:\n1. Register with email → OTP is logged in app console (mail.host=log)\n2. Verify email with GET /auths/verify-email?verifyOTP={otp}\n3. Login with Basic Auth header → returns JWT access & refresh tokens\n4. Use Bearer token or Basic Auth to call user endpoints\n5. Forget password → GET token from logs → POST /auths/reset-password\n\nOTP expires in 5 minutes.\n\nPre-seeded Accounts:\n- Admin (ADMIN): admin / admin12345\n- John Doe (USER): JohnDoe / kX9#mQ2$vL7p",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -10,19 +10,23 @@
     { "key": "username", "value": "alice" },
     { "key": "password", "value": "secret123" },
     { "key": "email", "value": "alice@example.com" },
-    { "key": "phone", "value": "+60123456789" },
     { "key": "role", "value": "USER" },
-    { "key": "otp", "value": "123456" },
-    { "key": "userId", "value": "1" },
-    { "key": "basicAuthUser", "value": "admin" },
-    { "key": "basicAuthPass", "value": "admin12345" }
+    { "key": "verifyOTP", "value": "123456", "description": "6-digit OTP from app logs. Update before running Verify Email." },
+    { "key": "verificationToken", "value": "", "description": "UUID token from app logs after Forget Password. Update before running Reset Password." },
+    { "key": "accessToken", "value": "", "description": "Populated after Login. Use as Bearer token." },
+    { "key": "refreshToken", "value": "", "description": "Populated after Login. Use in Refresh Token request." },
+    { "key": "userId", "value": "16", "description": "User ID for user-management endpoints (16 = John Doe)." },
+    { "key": "basicAuthUser", "value": "admin", "description": "Admin username for Basic Auth." },
+    { "key": "basicAuthPass", "value": "admin12345", "description": "Admin password for Basic Auth." },
+    { "key": "johnAuthUser", "value": "JohnDoe", "description": "Pre-seeded USER role account username." },
+    { "key": "johnAuthPass", "value": "kX9#mQ2$vL7p", "description": "Pre-seeded USER role account password." }
   ],
   "item": [
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Register (email)",
+          "name": "Register (email only)",
           "request": {
             "method": "POST",
             "header": [
@@ -37,27 +41,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["auths", "register"]
             },
-            "description": "Register with email. Sends a 6-digit OTP via email (or logs it if mail provider=log)."
-          },
-          "response": []
-        },
-        {
-          "name": "Register (phone)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"phone\": \"{{phone}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auths/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "register"]
-            },
-            "description": "Register with phone only. OTP is logged via LogSmsService."
+            "description": "Register a new user with email. A 6-digit OTP is sent via email (or logged to console when mail.host=log).\n\nRequired fields: username, password, role, email.\nIf the user already exists but is unverified, a new OTP is re-sent."
           },
           "response": []
         },
@@ -70,19 +54,19 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"{{phone}}\"\n}"
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+60123456789\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/auths/register",
               "host": ["{{baseUrl}}"],
               "path": ["auths", "register"]
             },
-            "description": "Both email and phone provided. Default channel is EMAIL."
+            "description": "Register with both email and phone. Email is required. The phone field is stored but OTP is still sent via email channel."
           },
           "response": []
         },
         {
-          "name": "Verify OTP (registration)",
+          "name": "Resend Verification Email (re-register)",
           "request": {
             "method": "POST",
             "header": [
@@ -90,139 +74,36 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"email\": \"{{email}}\",\n  \"purpose\": \"REGISTRATION\"\n}"
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"email\": \"{{email}}\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/auths/verify-otp",
+              "raw": "{{baseUrl}}/auths/register",
               "host": ["{{baseUrl}}"],
-              "path": ["auths", "verify-otp"]
+              "path": ["auths", "register"]
             },
-            "description": "Verify 6-digit registration OTP. Use email or phone matching registration."
+            "description": "Re-send the verification OTP for an unverified user.\n\nCalling POST /auths/register with an existing username that is not yet verified will regenerate and re-send the OTP. Check app logs for the new OTP."
           },
           "response": []
         },
         {
-          "name": "Verify OTP (phone)",
+          "name": "Verify Email",
           "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"phone\": \"{{phone}}\",\n  \"purpose\": \"REGISTRATION\"\n}"
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auths/verify-otp",
+              "raw": "{{baseUrl}}/auths/verify-email?verifyOTP={{verifyOTP}}",
               "host": ["{{baseUrl}}"],
-              "path": ["auths", "verify-otp"]
+              "path": ["auths", "verify-email"],
+              "query": [
+                { "key": "verifyOTP", "value": "{{verifyOTP}}", "description": "6-digit OTP from app logs or MailDev inbox." }
+              ]
             },
-            "description": "Verify registration OTP using phone."
+            "description": "Verify the user's email using the 6-digit OTP received after registration.\n\nUpdate the `verifyOTP` collection variable with the OTP from app logs before sending."
           },
           "response": []
         },
         {
-          "name": "Resend OTP (registration email)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"purpose\": \"REGISTRATION\",\n  \"channel\": \"EMAIL\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auths/resend-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "resend-otp"]
-            },
-            "description": "Resend registration OTP via EMAIL."
-          },
-          "response": []
-        },
-        {
-          "name": "Resend OTP (registration phone)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"purpose\": \"REGISTRATION\",\n  \"channel\": \"PHONE\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auths/resend-otp",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "resend-otp"]
-            },
-            "description": "Resend registration OTP via PHONE/SMS log."
-          },
-          "response": []
-        },
-        {
-          "name": "Forget Password (email)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"channel\": \"EMAIL\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auths/fp",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "fp"]
-            },
-            "description": "Sends RESET_PASSWORD 6-digit OTP via email."
-          },
-          "response": []
-        },
-        {
-          "name": "Forget Password (phone)",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"channel\": \"PHONE\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auths/fp",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "fp"]
-            },
-            "description": "Sends RESET_PASSWORD OTP via SMS log."
-          },
-          "response": []
-        },
-        {
-          "name": "Reset Password",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"otp\": \"{{otp}}\",\n  \"password\": \"newSecret123\",\n  \"email\": \"{{email}}\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/auths/reset-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "reset-password"]
-            },
-            "description": "Reset password with 6-digit OTP from forget-password flow."
-          },
-          "response": []
-        },
-        {
-          "name": "Login (Basic Auth)",
+          "name": "Login as Admin (Basic Auth)",
           "request": {
             "auth": {
               "type": "basic",
@@ -238,7 +119,105 @@
               "host": ["{{baseUrl}}"],
               "path": ["auths", "login"]
             },
-            "description": "Basic Auth login. Seeded admin: admin / admin12345. Or use your registered username/password after OTP verify."
+            "description": "Login via HTTP Basic Auth header as Admin (admin / admin12345). Returns JWT accessToken and refreshToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as John Doe (USER role)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                { "key": "username", "value": "{{johnAuthUser}}", "type": "string" },
+                { "key": "password", "value": "{{johnAuthPass}}", "type": "string" }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auths", "login"]
+            },
+            "description": "Login as seeded USER role account (John Doe: JohnDoe / kX9#mQ2$vL7p) via HTTP Basic Auth header. Returns JWT accessToken and refreshToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (JSON body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{basicAuthUser}}\",\n  \"password\": \"{{basicAuthPass}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auths", "login"]
+            },
+            "description": "Login via JSON request body. Returns JWT accessToken and refreshToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auths", "refresh"]
+            },
+            "description": "Exchange a valid refresh token for a new access token + refresh token pair.\n\nUpdate the `refreshToken` collection variable with the refresh token returned from Login."
+          },
+          "response": []
+        },
+        {
+          "name": "Forget Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/fp?email={{email}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["auths", "fp"],
+              "query": [
+                { "key": "email", "value": "{{email}}", "description": "Registered email address to send the reset password token to." }
+              ]
+            },
+            "description": "Request a password reset for the given email address.\n\nA reset `verificationToken` (UUID) is sent via email or logged to the console. Copy it into the `verificationToken` collection variable, then use Reset Password."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationToken\": \"{{verificationToken}}\",\n  \"password\": \"newSecret123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auths", "reset-password"]
+            },
+            "description": "Reset the user's password using the verificationToken UUID from the Forget Password step.\n\nUpdate the `verificationToken` collection variable with the UUID from app logs before sending."
           },
           "response": []
         },
@@ -259,7 +238,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["auths", "logout"]
             },
-            "description": "Logout authenticated user (requires Basic Auth)."
+            "description": "Logout the authenticated user. Requires Basic Auth or Bearer token.\n\nSets the user's `active` flag to false and clears the security context."
           },
           "response": []
         }
@@ -285,7 +264,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["users", "all"]
             },
-            "description": "List all users. ADMIN only."
+            "description": "List all registered users. Requires ADMIN role."
           },
           "response": []
         },
@@ -309,7 +288,7 @@
                 { "key": "userId", "value": "{{userId}}" }
               ]
             },
-            "description": "Get a single user by id. USER or ADMIN."
+            "description": "Get a single user by id. Requires USER or ADMIN role."
           },
           "response": []
         },
@@ -329,7 +308,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Updated\",\n  \"about\": \"Updated profile\",\n  \"jobTitle\": \"Engineer\",\n  \"phone\": \"{{phone}}\"\n}"
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"about\": \"Updated profile\",\n  \"jobTitle\": \"Senior Engineer\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/users/update?userId={{userId}}",
@@ -339,7 +318,7 @@
                 { "key": "userId", "value": "{{userId}}" }
               ]
             },
-            "description": "Partial update (null fields are skipped)."
+            "description": "Partial update of user fields. Null/omitted fields are skipped. Requires USER or ADMIN role."
           },
           "response": []
         },
@@ -363,7 +342,7 @@
                 { "key": "userId", "value": "{{userId}}" }
               ]
             },
-            "description": "Delete user, roles, and OTP records. ADMIN only."
+            "description": "Delete a user along with their roles and OTP records. Requires ADMIN role."
           },
           "response": []
         }

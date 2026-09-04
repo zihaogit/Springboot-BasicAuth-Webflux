@@ -4,10 +4,7 @@ import com.example.springbootbasiclogin.annotation.Authenticated;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -24,27 +21,25 @@ public class UserController {
 
     @GetMapping("/all")
     @Authenticated(roles = {"ADMIN"})
-    public Flux<Users> findAll(ServerWebExchange serverWebExchange) {
+    public Flux<Users> findAll() {
         return userService.findAll();
     }
 
     @GetMapping
     @Authenticated(roles = {"USER", "ADMIN"})
-    public Mono<Users> getUser(ServerWebExchange serverWebExchange, @RequestParam int userId) {
+    public Mono<Users> getUser(@RequestParam int userId) {
         return userService.findById(userId);
     }
 
     @PutMapping("/update")
     @Authenticated(roles = {"USER", "ADMIN"})
-    public Mono<Users> updateUser(ServerWebExchange serverWebExchange, @RequestParam int userId, @RequestBody Users users) {
+    public Mono<Users> updateUser(@RequestParam int userId, @RequestBody Users users) {
         return userService.update(userId, users);
     }
 
     @DeleteMapping
     @Authenticated(roles = {"ADMIN"})
-    public Mono<String> deleteUser(ServerWebExchange serverWebExchange,
-                                   @RequestParam int userId,
-                                   @AuthenticationPrincipal UserDetails auth) {
+    public Mono<String> deleteUser(@RequestParam int userId) {
         return userService.deleteById(userId);
     }
 }

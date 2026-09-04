@@ -17,7 +17,7 @@ INSERT INTO users (
 ) VALUES
     (
         'JohnDoe',
-        '{bcrypt}$2a$12$M4mMPMJ/oDkW8nIoSS5gA.mqkYViTAPZPbh3HjK/g5wCoLreeUXj6', -- john12345
+        '{bcrypt}$2a$10$uUrOkbePqGEjlcwEpd/1y.K6/PDFytlGmrCr/Y6aQA9/SKjfJUmlm', -- kX9#mQ2$vL7p
         'John',
         'Doe',
         'john@example.com',

@@ -38,7 +38,6 @@ public class VerificationOTP implements Persistable<UUID> {
     @Column("created_at")
     private LocalDateTime createdAt;
 
-    //TODO: Change to Instant if LocalDateTime cannot work
     @LastModifiedDate
     @Column("updated_at")
     private LocalDateTime updatedAt;
@@ -67,7 +66,12 @@ public class VerificationOTP implements Persistable<UUID> {
     }
 
     @Override
+    public UUID getId() {
+        return id;
+    }
+
+    @Override
     public boolean isNew() {
         return newRecord;
     }
-}
+}

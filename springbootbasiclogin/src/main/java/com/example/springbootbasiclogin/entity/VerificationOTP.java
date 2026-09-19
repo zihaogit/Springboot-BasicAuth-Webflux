@@ -12,7 +12,7 @@ import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @NoArgsConstructor
@@ -36,11 +36,11 @@ public class VerificationOTP implements Persistable<UUID> {
 
     @CreatedDate
     @Column("created_at")
-    private LocalDateTime createdAt;
+    private ZonedDateTime createdAt;
 
     @LastModifiedDate
     @Column("updated_at")
-    private LocalDateTime updatedAt;
+    private ZonedDateTime updatedAt;
 
     /**
      * Transient flag — true for newly constructed entities,
@@ -55,7 +55,7 @@ public class VerificationOTP implements Persistable<UUID> {
      */
     @PersistenceCreator
     public VerificationOTP(UUID id, int userId, int otp, String token,
-                           LocalDateTime createdAt, LocalDateTime updatedAt) {
+                           ZonedDateTime createdAt, ZonedDateTime updatedAt) {
         this.id = id;
         this.userId = userId;
         this.otp = otp;

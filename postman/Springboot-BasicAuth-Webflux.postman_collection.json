@@ -2,24 +2,80 @@
   "info": {
     "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "Springboot BasicAuth Webflux (OTP)",
-    "description": "API collection for Spring Boot WebFlux basic auth with email OTP verification and JWT tokens.\n\nFlow:\n1. Register with email → OTP is logged in app console (mail.host=log)\n2. Verify email with GET /auths/verify-email?verifyOTP={otp}\n3. Login with Basic Auth header → returns JWT access & refresh tokens\n4. Use Bearer token or Basic Auth to call user endpoints\n5. Forget password → GET token from logs → POST /auths/reset-password\n\nOTP expires in 5 minutes.\n\nPre-seeded Accounts:\n- Admin (ADMIN): admin / admin12345\n- John Doe (USER): JohnDoe / kX9#mQ2$vL7p",
+    "description": "API collection for Spring Boot WebFlux basic auth with email OTP verification and JWT tokens.\n\nFlow:\n1. Register with email \u2192 OTP is logged in app console (mail.host=log)\n2. Verify email with GET /auths/verify-email?verifyOTP={otp}\n3. Login with Basic Auth header \u2192 returns JWT access & refresh tokens\n4. Use Bearer token or Basic Auth to call user endpoints\n5. Forget password \u2192 GET token from logs \u2192 POST /auths/reset-password\n\nOTP expires in 5 minutes.\n\nPre-seeded Accounts:\n- Admin (ADMIN): admin / admin12345\n- John Doe (USER): JohnDoe / kX9#mQ2$vL7p",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "username", "value": "alice" },
-    { "key": "password", "value": "secret123" },
-    { "key": "email", "value": "alice@example.com" },
-    { "key": "role", "value": "USER" },
-    { "key": "verifyOTP", "value": "123456", "description": "6-digit OTP from app logs. Update before running Verify Email." },
-    { "key": "verificationToken", "value": "", "description": "UUID token from app logs after Forget Password. Update before running Reset Password." },
-    { "key": "accessToken", "value": "", "description": "Populated after Login. Use as Bearer token." },
-    { "key": "refreshToken", "value": "", "description": "Populated after Login. Use in Refresh Token request." },
-    { "key": "userId", "value": "16", "description": "User ID for user-management endpoints (16 = John Doe)." },
-    { "key": "basicAuthUser", "value": "admin", "description": "Admin username for Basic Auth." },
-    { "key": "basicAuthPass", "value": "admin12345", "description": "Admin password for Basic Auth." },
-    { "key": "johnAuthUser", "value": "JohnDoe", "description": "Pre-seeded USER role account username." },
-    { "key": "johnAuthPass", "value": "kX9#mQ2$vL7p", "description": "Pre-seeded USER role account password." }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "username",
+      "value": "alice"
+    },
+    {
+      "key": "password",
+      "value": "secret123"
+    },
+    {
+      "key": "email",
+      "value": "alice@example.com"
+    },
+    {
+      "key": "role",
+      "value": "USER"
+    },
+    {
+      "key": "verifyOTP",
+      "value": "123456",
+      "description": "6-digit OTP from app logs. Update before running Verify Email."
+    },
+    {
+      "key": "verificationToken",
+      "value": "",
+      "description": "UUID token from app logs after Forget Password. Update before running Reset Password."
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "description": "Populated after Login. Use as Bearer token."
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "description": "Populated after Login. Use in Refresh Token request."
+    },
+    {
+      "key": "userId",
+      "value": "16",
+      "description": "User ID for user-management endpoints (16 = John Doe)."
+    },
+    {
+      "key": "basicAuthUser",
+      "value": "admin",
+      "description": "Admin username for Basic Auth."
+    },
+    {
+      "key": "basicAuthPass",
+      "value": "admin12345",
+      "description": "Admin password for Basic Auth."
+    },
+    {
+      "key": "johnAuthUser",
+      "value": "JohnDoe",
+      "description": "Pre-seeded USER role account username."
+    },
+    {
+      "key": "johnAuthPass",
+      "value": "kX9#mQ2$vL7p",
+      "description": "Pre-seeded USER role account password."
+    },
+    {
+      "key": "authCode",
+      "value": "paste-auth-code-here",
+      "description": "Authorization code returned in redirect query parameter from FusionAuth callback."
+    }
   ],
   "item": [
     {
@@ -30,7 +86,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -38,8 +97,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auths/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "register"
+              ]
             },
             "description": "Register a new user with email. A 6-digit OTP is sent via email (or logged to console when mail.host=log).\n\nRequired fields: username, password, role, email.\nIf the user already exists but is unverified, a new OTP is re-sent."
           },
@@ -50,7 +114,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -58,8 +125,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auths/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "register"
+              ]
             },
             "description": "Register with both email and phone. Email is required. The phone field is stored but OTP is still sent via email channel."
           },
@@ -70,7 +142,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -78,8 +153,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auths/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "register"
+              ]
             },
             "description": "Re-send the verification OTP for an unverified user.\n\nCalling POST /auths/register with an existing username that is not yet verified will regenerate and re-send the OTP. Check app logs for the new OTP."
           },
@@ -92,10 +172,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auths/verify-email?verifyOTP={{verifyOTP}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "verify-email"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "verify-email"
+              ],
               "query": [
-                { "key": "verifyOTP", "value": "{{verifyOTP}}", "description": "6-digit OTP from app logs or MailDev inbox." }
+                {
+                  "key": "verifyOTP",
+                  "value": "{{verifyOTP}}",
+                  "description": "6-digit OTP from app logs or MailDev inbox."
+                }
               ]
             },
             "description": "Verify the user's email using the 6-digit OTP received after registration.\n\nUpdate the `verifyOTP` collection variable with the OTP from app logs before sending."
@@ -108,16 +197,29 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{basicAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{basicAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "POST",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auths/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "login"
+              ]
             },
             "description": "Login via HTTP Basic Auth header as Admin (admin / admin12345). Returns JWT accessToken and refreshToken."
           },
@@ -129,16 +231,29 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{johnAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{johnAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{johnAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{johnAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "POST",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auths/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "login"
+              ]
             },
             "description": "Login as seeded USER role account (John Doe: JohnDoe / kX9#mQ2$vL7p) via HTTP Basic Auth header. Returns JWT accessToken and refreshToken."
           },
@@ -149,7 +264,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -157,8 +275,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auths/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "login"
+              ]
             },
             "description": "Login via JSON request body. Returns JWT accessToken and refreshToken."
           },
@@ -169,7 +292,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -177,8 +303,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auths/refresh",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "refresh"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "refresh"
+              ]
             },
             "description": "Exchange a valid refresh token for a new access token + refresh token pair.\n\nUpdate the `refreshToken` collection variable with the refresh token returned from Login."
           },
@@ -191,10 +322,19 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auths/fp?email={{email}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "fp"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "fp"
+              ],
               "query": [
-                { "key": "email", "value": "{{email}}", "description": "Registered email address to send the reset password token to." }
+                {
+                  "key": "email",
+                  "value": "{{email}}",
+                  "description": "Registered email address to send the reset password token to."
+                }
               ]
             },
             "description": "Request a password reset for the given email address.\n\nA reset `verificationToken` (UUID) is sent via email or logged to the console. Copy it into the `verificationToken` collection variable, then use Reset Password."
@@ -206,7 +346,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -214,8 +357,13 @@
             },
             "url": {
               "raw": "{{baseUrl}}/auths/reset-password",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "reset-password"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "reset-password"
+              ]
             },
             "description": "Reset the user's password using the verificationToken UUID from the Forget Password step.\n\nUpdate the `verificationToken` collection variable with the UUID from app logs before sending."
           },
@@ -227,16 +375,29 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{basicAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{basicAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auths/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["auths", "logout"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "logout"
+              ]
             },
             "description": "Logout the authenticated user. Requires Basic Auth or Bearer token.\n\nSets the user's `active` flag to false and clears the security context."
           },
@@ -253,16 +414,29 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{basicAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{basicAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/users/all",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "all"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "all"
+              ]
             },
             "description": "List all registered users. Requires ADMIN role."
           },
@@ -274,18 +448,33 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{basicAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{basicAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/users?userId={{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
-                { "key": "userId", "value": "{{userId}}" }
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
               ]
             },
             "description": "Get a single user by id. Requires USER or ADMIN role."
@@ -298,13 +487,24 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{basicAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{basicAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -312,10 +512,18 @@
             },
             "url": {
               "raw": "{{baseUrl}}/users/update?userId={{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users", "update"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "update"
+              ],
               "query": [
-                { "key": "userId", "value": "{{userId}}" }
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
               ]
             },
             "description": "Partial update of user fields. Null/omitted fields are skipped. Requires USER or ADMIN role."
@@ -328,21 +536,253 @@
             "auth": {
               "type": "basic",
               "basic": [
-                { "key": "username", "value": "{{basicAuthUser}}", "type": "string" },
-                { "key": "password", "value": "{{basicAuthPass}}", "type": "string" }
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
               ]
             },
             "method": "DELETE",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/users?userId={{userId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
               "query": [
-                { "key": "userId", "value": "{{userId}}" }
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
               ]
             },
             "description": "Delete a user along with their roles and OTP records. Requires ADMIN role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Social Login",
+      "description": "Endpoints for FusionAuth Identity Provider Federation (Google, Facebook, X/Twitter, etc.)",
+      "item": [
+        {
+          "name": "Get Google Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/url?provider=google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "google"
+                }
+              ]
+            },
+            "description": "Returns the authorize URL with idp_hint set for Google."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Facebook Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/url?provider=facebook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "facebook"
+                }
+              ]
+            },
+            "description": "Returns the authorize URL with idp_hint set for Facebook."
+          },
+          "response": []
+        },
+        {
+          "name": "Get X / Twitter Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/url?provider=x",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "x"
+                }
+              ]
+            },
+            "description": "Returns the authorize URL with idp_hint mapped to Twitter."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Google Login (Browser Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/login?provider=google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "google"
+                }
+              ]
+            },
+            "description": "HTTP 302 redirect to FusionAuth/Google OAuth screen."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Facebook Login (Browser Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/login?provider=facebook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "facebook"
+                }
+              ]
+            },
+            "description": "HTTP 302 redirect to FusionAuth/Facebook login screen."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate X / Twitter Login (Browser Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/login?provider=x",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "x"
+                }
+              ]
+            },
+            "description": "HTTP 302 redirect to FusionAuth/X login screen."
+          },
+          "response": []
+        },
+        {
+          "name": "Social Callback (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/callback?code={{authCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "callback"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{authCode}}"
+                }
+              ]
+            },
+            "description": "Standard browser redirect callback with auth code in query param."
+          },
+          "response": []
+        },
+        {
+          "name": "Social Callback (POST JSON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{authCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/callback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "callback"
+              ]
+            },
+            "description": "SPA / Mobile app endpoint sending auth code in JSON body."
           },
           "response": []
         }

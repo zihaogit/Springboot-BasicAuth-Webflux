@@ -1,8 +1,7 @@
 package com.example.springbootbasiclogin.helper;
 
-import com.example.springbootbasiclogin.service.AuthService;
+import com.example.springbootbasiclogin.service.auth.AuthService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -17,7 +16,6 @@ public class BasicAuthHelper {
 
     private final AuthService authService;
 
-    @Autowired
     public BasicAuthHelper(AuthService authService) {
         this.authService = authService;
     }

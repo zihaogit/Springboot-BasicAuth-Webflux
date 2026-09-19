@@ -57,4 +57,7 @@ public class Users {
 
     @Column("verified")
     private boolean verified;
+
+    @Column("fusionauth_user_id")
+    private String fusionAuthUserId;
 }

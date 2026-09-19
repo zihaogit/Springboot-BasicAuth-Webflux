@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.service;
+package com.example.springbootbasiclogin.service.role;
 
 import com.example.springbootbasiclogin.entity.Roles;
 import reactor.core.publisher.Flux;

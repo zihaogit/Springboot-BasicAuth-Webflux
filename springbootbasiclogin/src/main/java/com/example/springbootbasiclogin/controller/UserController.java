@@ -2,7 +2,7 @@ package com.example.springbootbasiclogin.controller;
 
 import com.example.springbootbasiclogin.annotation.Authenticated;
 import com.example.springbootbasiclogin.entity.Users;
-import com.example.springbootbasiclogin.service.UserService;
+import com.example.springbootbasiclogin.service.user.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;

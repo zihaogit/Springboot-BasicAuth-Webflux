@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.service;
+package com.example.springbootbasiclogin.service.user;
 
 import com.example.springbootbasiclogin.entity.Users;
 import reactor.core.publisher.Flux;

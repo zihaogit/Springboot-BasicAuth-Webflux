@@ -23,6 +23,26 @@ services:
     volumes:
       - maildev_data:/usr/src/app
 
+  fusionauth:
+    image: fusionauth/fusionauth-app:latest
+    container_name: my_fusionauth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/fusionauth
+      DATABASE_ROOT_USERNAME: ${POSTGRES_USER}
+      DATABASE_ROOT_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_USERNAME: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      FUSIONAUTH_APP_MEMORY: 512M
+      FUSIONAUTH_APP_RUNTIME_MODE: development
+      FUSIONAUTH_APP_URL: http://localhost:9011
+      SEARCH_TYPE: database
+    ports:
+      - "9011:9011"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   maildev_data:

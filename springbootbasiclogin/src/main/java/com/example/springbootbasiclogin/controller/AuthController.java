@@ -9,7 +9,7 @@ import com.example.springbootbasiclogin.dao.auth.ResetPasswordRequest;
 import com.example.springbootbasiclogin.dao.auth.TokenResponse;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.exception.CustomException;
-import com.example.springbootbasiclogin.service.AuthService;
+import com.example.springbootbasiclogin.service.auth.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -17,18 +17,27 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import com.example.springbootbasiclogin.dao.auth.SocialCallbackRequest;
+import com.example.springbootbasiclogin.service.auth.SocialAuthService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import java.net.URI;
 import java.security.Principal;
 import java.util.Base64;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/auths")
 public class AuthController {
 
     private final AuthService authService;
+    private final SocialAuthService socialAuthService;
 
     @Autowired
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, SocialAuthService socialAuthService) {
         this.authService = authService;
+        this.socialAuthService = socialAuthService;
     }
 
     @PostMapping("/login")
@@ -84,6 +93,29 @@ public class AuthController {
     @PostMapping("/reset-password")
     public Mono<String> resetPassword(@RequestBody @Valid ResetPasswordRequest resetPasswordRequest) {
         return authService.resetPassword(resetPasswordRequest);
+    }
+
+    @GetMapping("/social/login")
+    public Mono<ResponseEntity<Void>> socialLogin(@RequestParam(name = "provider", required = false) String provider) {
+        String redirectUrl = socialAuthService.getAuthorizeUrl(provider);
+        return Mono.just(ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(redirectUrl))
+                .build());
+    }
+
+    @GetMapping("/social/url")
+    public Mono<Map<String, String>> getSocialLoginUrl(@RequestParam(name = "provider", required = false) String provider) {
+        return Mono.just(Map.of("authorizeUrl", socialAuthService.getAuthorizeUrl(provider)));
+    }
+
+    @GetMapping("/social/callback")
+    public Mono<TokenResponse> socialCallbackGet(@RequestParam(name = "code") String code) {
+        return socialAuthService.handleCallback(code);
+    }
+
+    @PostMapping("/social/callback")
+    public Mono<TokenResponse> socialCallbackPost(@RequestBody @Valid SocialCallbackRequest request) {
+        return socialAuthService.handleCallback(request.getCode());
     }
 
     @Authenticated(roles = {"ADMIN", "USER"})

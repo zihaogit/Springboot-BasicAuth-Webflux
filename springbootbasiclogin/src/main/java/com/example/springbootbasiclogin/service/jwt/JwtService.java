@@ -1,12 +1,12 @@
 package com.example.springbootbasiclogin.service.jwt;
 
-import com.example.springbootbasiclogin.config.AuthPropertiesConfig;
+import com.example.springbootbasiclogin.config.ApplicationPropertiesConfig;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -19,13 +19,13 @@ import java.util.List;
 @Slf4j
 public class JwtService {
 
-    private final AuthPropertiesConfig authPropertiesConfig;
+    private final ApplicationPropertiesConfig applicationProperties;
     private final SecretKey secretKey;
+    private final JwtParser jwtParser;
 
-    @Autowired
-    public JwtService(AuthPropertiesConfig authPropertiesConfig) {
-        this.authPropertiesConfig = authPropertiesConfig;
-        String secret = authPropertiesConfig.getJwt().getSecret();
+    public JwtService(ApplicationPropertiesConfig applicationProperties) {
+        this.applicationProperties = applicationProperties;
+        String secret = applicationProperties.getAuth().getJwt().getSecret();
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (secretBytes.length < 32) {
             byte[] padded = Arrays.copyOf(secretBytes, 32);
@@ -33,11 +33,12 @@ public class JwtService {
         } else {
             this.secretKey = Keys.hmacShaKeyFor(secretBytes);
         }
+        this.jwtParser = Jwts.parser().verifyWith(this.secretKey).build();
     }
 
     public String generateAccessToken(String username, String email, List<String> roles) {
         Date now = new Date();
-        long ttlMillis = authPropertiesConfig.getJwt().getAccessTokenTtl().toMillis();
+        long ttlMillis = applicationProperties.getAuth().getJwt().getAccessTokenTtl().toMillis();
         Date expiry = new Date(now.getTime() + ttlMillis);
 
         var builder = Jwts.builder()
@@ -50,7 +51,7 @@ public class JwtService {
         }
 
         return builder
-                .issuer(authPropertiesConfig.getJwt().getIssuer())
+                .issuer(applicationProperties.getAuth().getJwt().getIssuer())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -59,13 +60,13 @@ public class JwtService {
 
     public String generateRefreshToken(String username) {
         Date now = new Date();
-        long ttlMillis = authPropertiesConfig.getJwt().getRefreshTokenTtl().toMillis();
+        long ttlMillis = applicationProperties.getAuth().getJwt().getRefreshTokenTtl().toMillis();
         Date expiry = new Date(now.getTime() + ttlMillis);
 
         return Jwts.builder()
                 .subject(username)
                 .claim("token_type", "REFRESH")
-                .issuer(authPropertiesConfig.getJwt().getIssuer())
+                .issuer(applicationProperties.getAuth().getJwt().getIssuer())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(secretKey)
@@ -74,13 +75,9 @@ public class JwtService {
 
     public Claims parseAndValidateToken(String token) {
         try {
-            return Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            return jwtParser.parseSignedClaims(token).getPayload();
         } catch (JwtException | IllegalArgumentException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
+            log.warn("Invalid JWT token: {}", e.getMessage());
             throw e;
         }
     }

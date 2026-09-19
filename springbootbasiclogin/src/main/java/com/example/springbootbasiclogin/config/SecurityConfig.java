@@ -45,7 +45,12 @@ public class SecurityConfig {
         return http
                 .authenticationManager(authenticationManager)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/auths/register", "/auths/verify-email", "/auths/verify-email/**", "/auths/fp", "/auths/reset-password", "/auths/login", "/auths/refresh").permitAll()
+                        .pathMatchers(
+                                "/auths/register", "/auths/verify-email", "/auths/verify-email/**",
+                                "/auths/fp", "/auths/reset-password", "/auths/login", "/auths/refresh",
+                                "/auths/social/**", "/webhooks/**",
+                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**"
+                        ).permitAll()
                         .anyExchange().authenticated()
                 )
                 .addFilterAt(jwtAuthenticationWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
@@ -56,9 +61,6 @@ public class SecurityConfig {
                     ErrorResponse response = ErrorResponse.builder()
                             .resultCode(code.getCode())
                             .resultMsg(message)
-                            .errorDetails(ErrorResponse.ErrorDetailsBody.builder()
-                                    .stackTraces(e.getStackTrace())
-                                    .build())
                             .build();
 
                     try {

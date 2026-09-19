@@ -1,16 +1,21 @@
 spring:
   r2dbc:
-    username: postgres
-    password: root
-    url: r2dbc:postgresql://localhost:5432/security_assignment
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:root}
+    url: r2dbc:postgresql://localhost:5432/${POSTGRES_DB:security_assignment}
   flyway:
     username: ${spring.r2dbc.username}
     password: ${spring.r2dbc.password}
-    url: jdbc:postgresql://localhost:5432/security_assignment
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:security_assignment}
     locations: classpath:db/migration/common,classpath:db/migration/dev
     baseline-on-migrate: true
+  jackson:
+    time-zone: ${APP_TIMEZONE:Asia/Singapore}
   main:
     banner-mode: off
+
+app:
+  timezone: ${APP_TIMEZONE:Asia/Singapore}
   #for email (localhost)
   mail:
     host: log
@@ -43,6 +48,22 @@ auth:
     issuer: springboot-basiclogin
     access-token-ttl: 2h
     refresh-token-ttl: 24h
+  fusionauth:
+    base-url: ${FUSIONAUTH_URL:http://localhost:9011}
+    client-id: ${FUSIONAUTH_CLIENT_ID:514556d8-c2d9-4ead-ad8f-24f08fb68d11}
+    client-secret: ${FUSIONAUTH_CLIENT_SECRET:qfftDP4o-WLR3eayLM1jvI7-xrOqlGt3mYr2zVX9g3E}
+    redirect-uri: ${FUSIONAUTH_REDIRECT_URI:http://localhost:8080/auths/social/callback}
+    api-key: ${FUSIONAUTH_API_KEY:VgM8ecnDyunG-8uA4ZirJyYX7ky5An4rKbW1bwr8vyT4sEj_wWxzZlvj}
+    idp-ids:
+      google: ${FUSIONAUTH_IDP_GOOGLE_ID:a021e9c4-0270-4efa-8aaf-88ab91245944}
+      facebook: ${FUSIONAUTH_IDP_FACEBOOK_ID:7fb58645-ca0d-4525-ae91-4ec41da1240a}
+  webhook:
+    secret: ${FUSIONAUTH_WEBHOOK_SECRET:my-webhook-fusion-12345-secret}
+    signature-key: ${FUSIONAUTH_WEBHOOK_SIGNATURE_KEY:koxGfHbSgXZ2RODDSFlUoT9ImaFuTZjesIvE95JTLm0=}
+    max-event-age-seconds: ${FUSIONAUTH_WEBHOOK_MAX_AGE_SECONDS:300}
+    rate-limit:
+      max-attempts: ${FUSIONAUTH_WEBHOOK_RATE_LIMIT_MAX:100}
+      window-seconds: ${FUSIONAUTH_WEBHOOK_RATE_LIMIT_WINDOW:60}
 
 
 

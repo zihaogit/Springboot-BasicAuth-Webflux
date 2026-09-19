@@ -13,9 +13,11 @@ CREATE TABLE IF NOT EXISTS users (
     assignments VARCHAR(255),
     profile_pic VARCHAR(255),
     active BOOLEAN,
-    verified BOOL DEFAULT FALSE
+    verified BOOL DEFAULT FALSE,
+    fusionauth_user_id VARCHAR(64)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_fusionauth_user_id ON users(fusionauth_user_id);
 
 CREATE TABLE IF NOT EXISTS roles (
     role_id SERIAL PRIMARY KEY,
@@ -28,6 +30,12 @@ CREATE TABLE IF NOT EXISTS verification_otp (
     user_id SERIAL REFERENCES users(id),
     otp INTEGER,
     token VARCHAR(255),
-    created_at TIMESTAMP,
-    updated_at TIMESTAMP
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS processed_webhook_events (
+    event_id VARCHAR(64) PRIMARY KEY,
+    event_type VARCHAR(64) NOT NULL,
+    processed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );

@@ -3,3 +3,6 @@
 .vscode/
 .ai/
 *.iml
+
+# Environment secrets
+.env

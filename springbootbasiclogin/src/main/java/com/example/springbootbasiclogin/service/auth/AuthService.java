@@ -1,6 +1,6 @@
-package com.example.springbootbasiclogin.service;
+package com.example.springbootbasiclogin.service.auth;
 
-import com.example.springbootbasiclogin.config.AuthPropertiesConfig;
+import com.example.springbootbasiclogin.config.ApplicationPropertiesConfig;
 import com.example.springbootbasiclogin.constant.AuthResponseCode;
 import com.example.springbootbasiclogin.dao.auth.LoginRequest;
 import com.example.springbootbasiclogin.dao.auth.RefreshTokenRequest;
@@ -18,18 +18,18 @@ import com.example.springbootbasiclogin.repo.VerificationTokenRepository;
 import com.example.springbootbasiclogin.service.jwt.JwtService;
 import com.example.springbootbasiclogin.service.mail.EmailService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.security.SecureRandom;
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Service
@@ -42,11 +42,11 @@ public class AuthService implements ReactiveUserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final JwtService jwtService;
-    private final AuthPropertiesConfig authPropertiesConfig;
+    private final ApplicationPropertiesConfig applicationProperties;
+    private final ZoneId zoneId;
 
     private static final SecureRandom secureRandom = new SecureRandom();
 
-    @Autowired
     public AuthService(
             UserRepository userRepository,
             RoleRepository roleRepository,
@@ -54,14 +54,16 @@ public class AuthService implements ReactiveUserDetailsService {
             PasswordEncoder passwordEncoder,
             EmailService emailService,
             JwtService jwtService,
-            AuthPropertiesConfig authPropertiesConfig) {
+            ApplicationPropertiesConfig applicationProperties,
+            ZoneId zoneId) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.jwtService = jwtService;
-        this.authPropertiesConfig = authPropertiesConfig;
+        this.applicationProperties = applicationProperties;
+        this.zoneId = zoneId;
     }
 
     // find the User + Roles using the username when require by basic auth
@@ -98,7 +100,10 @@ public class AuthService implements ReactiveUserDetailsService {
                 .flatMap(user -> {
                     user.setActive(true);
                     return userRepository.save(user)
-                            .flatMap(savedUser -> generateTokensForUser(savedUser.getUsername()));
+                            .flatMap(savedUser -> roleRepository.findByUserId(savedUser.getId())
+                                    .map(Roles::getRole)
+                                    .collectList()
+                                    .map(roles -> buildTokenResponse(savedUser, roles)));
                 });
     }
 
@@ -111,21 +116,22 @@ public class AuthService implements ReactiveUserDetailsService {
                             .flatMap(savedUser -> roleRepository.findByUserId(savedUser.getId())
                                     .map(Roles::getRole)
                                     .collectList()
-                                    .map(roles -> {
-                                        String accessToken = jwtService.generateAccessToken(savedUser.getUsername(),
-                                                savedUser.getEmail(), roles);
-                                        String refreshToken = jwtService.generateRefreshToken(savedUser.getUsername());
-                                        long expiresIn = authPropertiesConfig.getJwt().getAccessTokenTtl().toSeconds();
-
-                                        return TokenResponse.builder()
-                                                .accessToken(accessToken)
-                                                .refreshToken(refreshToken)
-                                                .tokenType("Bearer")
-                                                .expiresIn(expiresIn)
-                                                .username(savedUser.getUsername())
-                                                .build();
-                                    }));
+                                    .map(roles -> buildTokenResponse(savedUser, roles)));
                 });
+    }
+
+    private TokenResponse buildTokenResponse(Users user, java.util.List<String> roles) {
+        String accessToken = jwtService.generateAccessToken(user.getUsername(), user.getEmail(), roles);
+        String refreshToken = jwtService.generateRefreshToken(user.getUsername());
+        long expiresIn = applicationProperties.getAuth().getJwt().getAccessTokenTtl().toSeconds();
+
+        return TokenResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(expiresIn)
+                .username(user.getUsername())
+                .build();
     }
 
     public Mono<TokenResponse> refreshToken(RefreshTokenRequest request) {
@@ -147,19 +153,9 @@ public class AuthService implements ReactiveUserDetailsService {
                     if (!existingUser.isVerified()) {
                         // Resend verification email
                         return generateToken(existingUser)
-                                .doOnSuccess(token -> {
-                                    String subject = "Email Verification";
-                                    String content = "Please click the link below to verify your registration:<br>"
-                                            + "<h3><a href=\"[[URL]]\">VERIFY</a></h3>"
-                                            + "Thank you,<br>Your company name.";
-
-                                    String verifyURL = "http://localhost:8080/auths/verify-email?verifyOTP=" + token.getOtp();
-                                    content = content.replace("[[URL]]", verifyURL);
-
-                                    AuthEmail authEmail = new AuthEmail(existingUser.getEmail(), subject, content);
-                                    emailService.sendVerifyLink(authEmail, verifyURL);
-                                })
-                                .thenReturn(existingUser);
+                                .flatMap(token -> Mono.fromRunnable(() -> sendVerificationEmail(existingUser.getEmail(), token.getOtp()))
+                                        .subscribeOn(Schedulers.boundedElastic())
+                                        .thenReturn(existingUser));
                     } else {
                         // User is already verified
                         log.error("User is already registered and verified.");
@@ -180,24 +176,24 @@ public class AuthService implements ReactiveUserDetailsService {
                                 role.setUserId(savedUser.getId());
                                 role.setRole(registerRequest.getRole());
 
-                                Mono<VerificationOTP> tokenMono = generateToken(savedUser);
-
                                 return roleRepository.save(role)
-                                        .then(tokenMono.doOnSuccess(token -> {
-                                            String subject = "Email Verification";
-                                            String content = "Please click the link below to verify your registration:<br>"
-                                                    + "<h3><a href=\"[[URL]]\">VERIFY</a></h3>"
-                                                    + "Thank you,<br>Your company name.";
-
-                                            String verifyURL = "http://localhost:8080/auths/verify-email?verifyOTP=" + token.getOtp();
-                                            content = content.replace("[[URL]]", verifyURL);
-
-                                            AuthEmail authEmail = new AuthEmail(savedUser.getEmail(), subject, content);
-                                            emailService.sendVerifyLink(authEmail, verifyURL);
-                                        }))
-                                        .thenReturn(savedUser);
+                                        .then(generateToken(savedUser))
+                                        .flatMap(token -> Mono.fromRunnable(() -> sendVerificationEmail(savedUser.getEmail(), token.getOtp()))
+                                                .subscribeOn(Schedulers.boundedElastic())
+                                                .thenReturn(savedUser));
                             });
                 }));
+    }
+
+    private void sendVerificationEmail(String email, int otp) {
+        String subject = "Email Verification";
+        String verifyURL = "http://localhost:8080/auths/verify-email?verifyOTP=" + otp;
+        String content = "Please click the link below to verify your registration:<br>"
+                + "<h3><a href=\"" + verifyURL + "\">VERIFY</a></h3>"
+                + "Thank you,<br>Your company name.";
+
+        AuthEmail authEmail = new AuthEmail(email, subject, content);
+        emailService.sendVerifyLink(authEmail, verifyURL);
     }
 
     public Mono<String> verifyEmail(int verifyOTP) {
@@ -221,17 +217,18 @@ public class AuthService implements ReactiveUserDetailsService {
                 .flatMap(user -> {
                     Mono<VerificationOTP> savedToken = generateToken(user);
                     return savedToken
-                            .doOnSuccess(tokenSaved -> {
+                            .flatMap(tokenSaved -> {
                                 String subject = "Reset Password";
-                                String content = "Forget Password? Please click the link below to to change your password:<br>"
+                                String content = "Forget Password? Please click the link below to change your password:<br>"
                                         + "<h3>http://localhost:8080/reset-password/" + tokenSaved.getToken() + "</h3>"
                                         + "Bye Bye, Regards from:<br>"
                                         + "Your company name.";
 
                                 AuthEmail authEmail = new AuthEmail(user.getEmail(), subject, content);
-                                emailService.sendVerifyLink(authEmail, tokenSaved.getToken());
+                                return Mono.fromRunnable(() -> emailService.sendResetPasswordLink(authEmail, tokenSaved.getToken()))
+                                        .subscribeOn(Schedulers.boundedElastic())
+                                        .thenReturn("Do check your email for resetting password");
                             })
-                            .thenReturn("Do check your email for resetting password")
                             .defaultIfEmpty("Error! cannot save Verification Token");
                 })
                 .defaultIfEmpty("Email is not registered");
@@ -259,7 +256,6 @@ public class AuthService implements ReactiveUserDetailsService {
                 .flatMap(user -> {
                     user.setActive(false);
                     return userRepository.save(user)
-                            .doOnSuccess(success -> SecurityContextHolder.clearContext())
                             .thenReturn("Logout successful");
                 })
                 .defaultIfEmpty("No User found with username: " + username);
@@ -268,22 +264,24 @@ public class AuthService implements ReactiveUserDetailsService {
     private Mono<VerificationOTP> generateToken(Users savedUser) {
         return verificationTokenRepository.findByUserId(savedUser.getId())
                 .flatMap(existingToken -> {
+                    ZonedDateTime now = ZonedDateTime.now(zoneId);
                     existingToken.setToken(UUID.randomUUID().toString());
                     existingToken.setOtp(generateOTP());
-                    existingToken.setUpdatedAt(LocalDateTime.now());
+                    existingToken.setUpdatedAt(now);
                     if (existingToken.getCreatedAt() == null) {
-                        existingToken.setCreatedAt(LocalDateTime.now());
+                        existingToken.setCreatedAt(now);
                     }
                     return verificationTokenRepository.save(existingToken);
                 })
                 .switchIfEmpty(Mono.defer(() -> {
+                    ZonedDateTime now = ZonedDateTime.now(zoneId);
                     VerificationOTP verificationOTP = new VerificationOTP();
                     verificationOTP.setId(UUID.randomUUID());
                     verificationOTP.setToken(UUID.randomUUID().toString());
                     verificationOTP.setOtp(generateOTP());
                     verificationOTP.setUserId(savedUser.getId());
-                    verificationOTP.setCreatedAt(LocalDateTime.now());
-                    verificationOTP.setUpdatedAt(LocalDateTime.now());
+                    verificationOTP.setCreatedAt(now);
+                    verificationOTP.setUpdatedAt(now);
                     return verificationTokenRepository.save(verificationOTP);
                 }));
     }
@@ -292,12 +290,12 @@ public class AuthService implements ReactiveUserDetailsService {
         return 100000 + secureRandom.nextInt(900000);
     }
 
-    private boolean isTokenExpired(LocalDateTime creationTime) {
+    private boolean isTokenExpired(ZonedDateTime creationTime) {
         if (creationTime == null) {
             return false;
         }
-        LocalDateTime now = LocalDateTime.now();
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
         Duration duration = Duration.between(creationTime, now);
-        return duration.toMinutes() > 5; // Token expires after 5 minutes
+        return duration.getSeconds() >= 300; // Token expires after 5 minutes (300 seconds)
     }
 }

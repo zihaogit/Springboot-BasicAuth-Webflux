@@ -1,8 +1,7 @@
-package com.example.springbootbasiclogin.service;
+package com.example.springbootbasiclogin.service.role;
 
 import com.example.springbootbasiclogin.repo.RoleRepository;
 import com.example.springbootbasiclogin.entity.Roles;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -12,7 +11,6 @@ public class RolesServiceImpl implements RoleService {
 
     private final RoleRepository roleRepository;
 
-    @Autowired
     public RolesServiceImpl(RoleRepository theRoleRepository) {
         this.roleRepository = theRoleRepository;
     }

@@ -19,6 +19,21 @@ public class GlobalExceptionHandler {
         this.messageUtil = messageUtil;
     }
 
+    @ExceptionHandler({org.springframework.web.server.ServerWebInputException.class, org.springframework.web.bind.support.WebExchangeBindException.class})
+    public Mono<ResponseEntity<ErrorResponse>> handleBadRequestException(Exception ex) {
+        log.warn("Bad request input validation error: {}", ex.getMessage());
+
+        String message = messageUtil.getMessage(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER.getMessageKey());
+        ErrorResponse response = ErrorResponse.builder()
+                .resultCode(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER.getCode())
+                .resultMsg(message != null ? message : ex.getMessage())
+                .build();
+
+        return Mono.just(ResponseEntity
+                .status(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER.getHttpStatus())
+                .body(response));
+    }
+
     @ExceptionHandler(Exception.class)
     public Mono<ResponseEntity<ErrorResponse>> handleMissedException(Exception ex) {
         log.error("handleMissedException", ex);
@@ -26,9 +41,6 @@ public class GlobalExceptionHandler {
         ErrorResponse response = ErrorResponse.builder()
                 .resultCode(AuthResponseCode.AUTH_000520_NOT_FOUND.getCode())
                 .resultMsg(ex.getMessage())
-                .errorDetails(ErrorResponse.ErrorDetailsBody.builder()
-                        .stackTraces(ex.getStackTrace())
-                        .build())
                 .build();
 
         return Mono.just(ResponseEntity
@@ -37,8 +49,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(value = {CustomException.class})
-    public ResponseEntity<Object> handleCustomException(CustomException ex) {
-        log.error("handleCustomException", ex);
+    public Mono<ResponseEntity<ErrorResponse>> handleCustomException(CustomException ex) {
+        if (ex.getAuthResponseCode().getHttpStatus().is5xxServerError()) {
+            log.error("Server error handling request: [{}] {}", ex.getAuthResponseCode().getCode(), ex.getMessage(), ex);
+        } else {
+            log.warn("Client error: [{}] {}", ex.getAuthResponseCode().getCode(), ex.getMessage());
+        }
 
         // Choose message based on presence of messageArgs
         String message = (ex.getMessageArgs() != null && ex.getMessageArgs().length > 0)
@@ -47,12 +63,11 @@ public class GlobalExceptionHandler {
 
         ErrorResponse response = ErrorResponse.builder()
                 .resultCode(ex.getAuthResponseCode().getCode())
-                .resultMsg(message)
-                .errorDetails(ErrorResponse.ErrorDetailsBody.builder()
-                        .stackTraces(ex.getStackTrace())
-                        .build())
+                .resultMsg(message != null ? message : ex.getMessage())
                 .build();
 
-        return new ResponseEntity<>(response, ex.getAuthResponseCode().getHttpStatus());
+        return Mono.just(ResponseEntity
+                .status(ex.getAuthResponseCode().getHttpStatus())
+                .body(response));
     }
 }

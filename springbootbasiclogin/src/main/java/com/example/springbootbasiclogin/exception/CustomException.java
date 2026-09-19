@@ -14,6 +14,17 @@ public class CustomException extends RuntimeException {
         this.messageArgs = new Object[0];
     }
 
+    public CustomException(AuthResponseCode authResponseCode, String message) {
+        super(message);
+        this.authResponseCode = authResponseCode;
+        this.messageArgs = message != null ? new Object[]{message} : new Object[0];
+    }
+
+    public CustomException(AuthResponseCode authResponseCode, Object... messageArgs) {
+        this.authResponseCode = authResponseCode;
+        this.messageArgs = messageArgs != null ? messageArgs.clone() : new Object[0];
+    }
+
     public CustomException(AuthResponseCode authResponseCode, Throwable cause) {
         super(cause);
         this.authResponseCode = authResponseCode;

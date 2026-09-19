@@ -13,6 +13,8 @@ public interface UserRepository extends ReactiveCrudRepository<Users, Integer> {
 
     Mono<Users> findByEmail(String email);
 
+    Mono<Users> findByFusionAuthUserId(String fusionAuthUserId);
+
     @Query("SELECT username FROM users WHERE id = :id")
     Mono<String> findUsernameById(int id);
 

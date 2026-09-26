@@ -35,8 +35,6 @@ import java.util.Map;
 @RequestMapping("/auths")
 public class AuthController {
 
-    private static final String BASIC_PREFIX = "Basic ";
-
     private final AuthService authService;
     private final SocialAuthService socialAuthService;
 
@@ -51,9 +49,17 @@ public class AuthController {
             @RequestBody(required = false) LoginRequest loginRequest,
             Principal principal
     ) {
-        // codeql[java/user-controlled-bypass] Endpoint supports multiple login strategies (Basic Auth header, Principal, or JSON body)
-        if (authHeader != null && authHeader.startsWith(BASIC_PREFIX)) {
-            return loginWithBasicAuth(authHeader);
+        if (authHeader != null && authHeader.startsWith("Basic ")) {
+            try {
+                String base64Credentials = authHeader.substring(6).trim();
+                String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
+                String[] parts = credentials.split(":", 2);
+                if (parts.length == 2) {
+                    return authService.loginUser(new LoginRequest(parts[0], parts[1]));
+                }
+            } catch (Exception e) {
+                return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION, e));
+            }
         }
 
         if (principal != null && principal.getName() != null) {
@@ -65,20 +71,6 @@ public class AuthController {
         }
 
         return Mono.error(new CustomException(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER));
-    }
-
-    private Mono<TokenResponse> loginWithBasicAuth(String authHeader) {
-        try {
-            String base64Credentials = authHeader.substring(BASIC_PREFIX.length()).trim();
-            String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
-            String[] parts = credentials.split(":", 2);
-            if (parts.length == 2) {
-                return authService.loginUser(new LoginRequest(parts[0], parts[1]));
-            }
-            return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION));
-        } catch (IllegalArgumentException e) {
-            return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION, e));
-        }
     }
 
     @PostMapping("/refresh")

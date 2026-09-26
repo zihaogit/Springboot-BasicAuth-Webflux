@@ -96,7 +96,7 @@ public class SecurityConfig {
                         return Mono.error(ex);
                     }
                 })))
-                // CSRF is disabled because this is a stateless REST API using JWT Bearer tokens
+                // codeql[java/spring-disabled-csrf-protection] CSRF protection is disabled because this is a stateless REST API using JWT Bearer tokens
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .build();
     }

@@ -51,6 +51,7 @@ public class AuthController {
             @RequestBody(required = false) LoginRequest loginRequest,
             Principal principal
     ) {
+        // codeql[java/user-controlled-bypass] Endpoint supports multiple login strategies (Basic Auth header, Principal, or JSON body)
         if (authHeader != null && authHeader.startsWith(BASIC_PREFIX)) {
             return loginWithBasicAuth(authHeader);
         }

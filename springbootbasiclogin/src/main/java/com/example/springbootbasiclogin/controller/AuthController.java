@@ -6,23 +6,27 @@ import com.example.springbootbasiclogin.dao.auth.LoginRequest;
 import com.example.springbootbasiclogin.dao.auth.RefreshTokenRequest;
 import com.example.springbootbasiclogin.dao.auth.RegisterRequest;
 import com.example.springbootbasiclogin.dao.auth.ResetPasswordRequest;
+import com.example.springbootbasiclogin.dao.auth.SocialCallbackRequest;
 import com.example.springbootbasiclogin.dao.auth.TokenResponse;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.service.auth.AuthService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
-import com.example.springbootbasiclogin.dao.auth.SocialCallbackRequest;
 import com.example.springbootbasiclogin.service.auth.SocialAuthService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Base64;
 import java.util.Map;
@@ -31,10 +35,11 @@ import java.util.Map;
 @RequestMapping("/auths")
 public class AuthController {
 
+    private static final String BASIC_PREFIX = "Basic ";
+
     private final AuthService authService;
     private final SocialAuthService socialAuthService;
 
-    @Autowired
     public AuthController(AuthService authService, SocialAuthService socialAuthService) {
         this.authService = authService;
         this.socialAuthService = socialAuthService;
@@ -46,17 +51,8 @@ public class AuthController {
             @RequestBody(required = false) LoginRequest loginRequest,
             Principal principal
     ) {
-        if (authHeader != null && authHeader.startsWith("Basic ")) {
-            try {
-                String base64Credentials = authHeader.substring(6).trim();
-                String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
-                String[] parts = credentials.split(":", 2);
-                if (parts.length == 2) {
-                    return authService.loginUser(new LoginRequest(parts[0], parts[1]));
-                }
-            } catch (Exception e) {
-                return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION, e));
-            }
+        if (authHeader != null && authHeader.startsWith(BASIC_PREFIX)) {
+            return loginWithBasicAuth(authHeader);
         }
 
         if (principal != null && principal.getName() != null) {
@@ -68,6 +64,20 @@ public class AuthController {
         }
 
         return Mono.error(new CustomException(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER));
+    }
+
+    private Mono<TokenResponse> loginWithBasicAuth(String authHeader) {
+        try {
+            String base64Credentials = authHeader.substring(BASIC_PREFIX.length()).trim();
+            String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
+            String[] parts = credentials.split(":", 2);
+            if (parts.length == 2) {
+                return authService.loginUser(new LoginRequest(parts[0], parts[1]));
+            }
+            return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION));
+        } catch (IllegalArgumentException e) {
+            return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION, e));
+        }
     }
 
     @PostMapping("/refresh")

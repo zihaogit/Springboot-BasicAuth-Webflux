@@ -19,6 +19,9 @@ import java.util.List;
 @Slf4j
 public class JwtService {
 
+    public static final String CLAIM_TOKEN_TYPE = "token_type";
+    private static final int MIN_KEY_BYTES = 32;
+
     private final ApplicationPropertiesConfig applicationProperties;
     private final SecretKey secretKey;
     private final JwtParser jwtParser;
@@ -27,8 +30,8 @@ public class JwtService {
         this.applicationProperties = applicationProperties;
         String secret = applicationProperties.getAuth().getJwt().getSecret();
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
-        if (secretBytes.length < 32) {
-            byte[] padded = Arrays.copyOf(secretBytes, 32);
+        if (secretBytes.length < MIN_KEY_BYTES) {
+            byte[] padded = Arrays.copyOf(secretBytes, MIN_KEY_BYTES);
             this.secretKey = Keys.hmacShaKeyFor(padded);
         } else {
             this.secretKey = Keys.hmacShaKeyFor(secretBytes);
@@ -43,7 +46,7 @@ public class JwtService {
 
         var builder = Jwts.builder()
                 .subject(username)
-                .claim("token_type", "ACCESS")
+                .claim(CLAIM_TOKEN_TYPE, "ACCESS")
                 .claim("roles", roles);
 
         if (email != null) {
@@ -65,7 +68,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(username)
-                .claim("token_type", "REFRESH")
+                .claim(CLAIM_TOKEN_TYPE, "REFRESH")
                 .issuer(applicationProperties.getAuth().getJwt().getIssuer())
                 .issuedAt(now)
                 .expiration(expiry)
@@ -83,7 +86,7 @@ public class JwtService {
     }
 
     public boolean isTokenType(Claims claims, String expectedTokenType) {
-        String tokenType = claims.get("token_type", String.class);
+        String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
         return expectedTokenType.equalsIgnoreCase(tokenType);
     }
 }

@@ -3,13 +3,12 @@ package com.example.springbootbasiclogin.service.webhook;
 import com.example.springbootbasiclogin.config.ApplicationPropertiesConfig;
 import com.example.springbootbasiclogin.entity.ProcessedWebhookEvent;
 import com.example.springbootbasiclogin.repo.ProcessedWebhookEventRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
@@ -19,13 +18,15 @@ import java.security.MessageDigest;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 @Service
 @Slf4j
 public class WebhookSecurityService {
+
+    private static final int MIN_SIGNING_KEY_BYTES = 32;
+    private static final long CLOCK_SKEW_TOLERANCE_MILLIS = 60_000L;
 
     private final ApplicationPropertiesConfig applicationProperties;
     private final ProcessedWebhookEventRepository processedWebhookEventRepository;
@@ -110,10 +111,6 @@ public class WebhookSecurityService {
         return false;
     }
 
-    public boolean verifySignature(String rawPayload, String signatureHeader) {
-        return verifySignature(rawPayload, signatureHeader, null);
-    }
-
     /**
      * Verifies native FusionAuth X-FusionAuth-Signature-JWT header:
      * 1. Computes SHA-256 base64 digest of raw payload.
@@ -130,7 +127,11 @@ public class WebhookSecurityService {
 
             // Verify JWT
             byte[] keyBytes = signingKey.getBytes(StandardCharsets.UTF_8);
-            SecretKey key = Keys.hmacShaKeyFor(keyBytes.length < 32 ? Arrays.copyOf(keyBytes, 32) : keyBytes);
+            if (keyBytes.length < MIN_SIGNING_KEY_BYTES) {
+                log.error("Webhook signing key length must be at least {} bytes", MIN_SIGNING_KEY_BYTES);
+                return false;
+            }
+            SecretKey key = Keys.hmacShaKeyFor(keyBytes);
 
             Claims claims = Jwts.parser()
                     .verifyWith(key)
@@ -196,7 +197,7 @@ public class WebhookSecurityService {
 
         if (ageMillis < 0) {
             // Future timestamp — could be clock skew. Allow up to 60 seconds in the future.
-            if (Math.abs(ageMillis) > 60_000) {
+            if (Math.abs(ageMillis) > CLOCK_SKEW_TOLERANCE_MILLIS) {
                 log.warn("Webhook event timestamp is too far in the future: {}ms", ageMillis);
                 return false;
             }

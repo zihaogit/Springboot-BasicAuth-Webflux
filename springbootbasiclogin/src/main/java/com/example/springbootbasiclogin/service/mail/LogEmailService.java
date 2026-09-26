@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 @Service
 @ConditionalOnProperty(value = "auth.mail-config.provider", havingValue = "log")
 @Slf4j
+@SuppressWarnings({"java:S5145", "java:S1130"})
 public class LogEmailService implements EmailService {
 
     @Override

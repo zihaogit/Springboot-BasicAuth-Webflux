@@ -9,6 +9,14 @@ spring:
     url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:security_assignment}
     locations: classpath:db/migration/common,classpath:db/migration/dev
     baseline-on-migrate: true
+  data:
+    redis:
+      repositories:
+        enabled: false
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
   jackson:
     time-zone: ${APP_TIMEZONE:Asia/Singapore}
   main:
@@ -16,6 +24,7 @@ spring:
 
 app:
   timezone: ${APP_TIMEZONE:Asia/Singapore}
+  base-url: ${APP_BASE_URL:http://localhost:8080}
   #for email (localhost)
   mail:
     host: log
@@ -39,6 +48,8 @@ springdoc:
     path: /swagger-ui.html
 
 auth:
+  otp-expiry: ${AUTH_OTP_EXPIRY:300s}
+  reset-token-expiry: ${AUTH_RESET_TOKEN_EXPIRY:900s}
   mail-config:
     provider: log
     from: noreply@yourdomain.com

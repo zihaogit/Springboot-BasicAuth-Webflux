@@ -136,6 +136,10 @@ public class ApplicationPropertiesConfig {
         private String timezone;
 
         @NotNull
+        @NotBlank
+        private String baseUrl;
+
+        @NotNull
         @Valid
         private AppMailProperties mail = new AppMailProperties();
     }
@@ -232,6 +236,12 @@ public class ApplicationPropertiesConfig {
 
     @Data
     public static class AuthProperties {
+
+        @NotNull
+        private Duration otpExpiry;
+
+        @NotNull
+        private Duration resetTokenExpiry;
 
         @NotNull
         @Valid

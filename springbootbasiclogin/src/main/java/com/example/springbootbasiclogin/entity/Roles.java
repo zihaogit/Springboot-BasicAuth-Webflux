@@ -11,11 +11,11 @@ public class Roles {
 
     @Id
     @Column("role_id")
-    private int roleId; //1 , 2, 3
+    private int roleId;
 
     @Column("user_id")
-    private int userId; // 1 , 1 , 1
+    private int userId;
 
     @Column("role")
-    private String role; //ADMIN, MODERATOR, USER
+    private String role;
 }

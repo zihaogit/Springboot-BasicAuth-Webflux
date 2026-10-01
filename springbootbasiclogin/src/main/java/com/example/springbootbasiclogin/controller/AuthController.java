@@ -6,23 +6,27 @@ import com.example.springbootbasiclogin.dao.auth.LoginRequest;
 import com.example.springbootbasiclogin.dao.auth.RefreshTokenRequest;
 import com.example.springbootbasiclogin.dao.auth.RegisterRequest;
 import com.example.springbootbasiclogin.dao.auth.ResetPasswordRequest;
+import com.example.springbootbasiclogin.dao.auth.SocialCallbackRequest;
 import com.example.springbootbasiclogin.dao.auth.TokenResponse;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.service.auth.AuthService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.bind.annotation.*;
-import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
-import com.example.springbootbasiclogin.dao.auth.SocialCallbackRequest;
 import com.example.springbootbasiclogin.service.auth.SocialAuthService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Base64;
 import java.util.Map;
@@ -34,7 +38,6 @@ public class AuthController {
     private final AuthService authService;
     private final SocialAuthService socialAuthService;
 
-    @Autowired
     public AuthController(AuthService authService, SocialAuthService socialAuthService) {
         this.authService = authService;
         this.socialAuthService = socialAuthService;

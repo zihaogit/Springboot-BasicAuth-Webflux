@@ -12,7 +12,9 @@ import java.util.List;
 
 public final class ZonedDateTimeConverterUtil {
 
-    private ZonedDateTimeConverterUtil() {}
+    private ZonedDateTimeConverterUtil() {
+        // Utility class, prevent instantiation
+    }
 
     @WritingConverter
     public static class ZonedDateTimeToOffsetDateTimeConverter implements Converter<ZonedDateTime, OffsetDateTime> {

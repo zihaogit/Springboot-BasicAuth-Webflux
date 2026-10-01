@@ -4,12 +4,17 @@ import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.helper.RoleSyncHelper;
 import com.example.springbootbasiclogin.repo.UserRepository;
 import com.example.springbootbasiclogin.service.webhook.WebhookSecurityService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
@@ -79,7 +84,7 @@ public class FusionAuthWebhookController {
         JsonNode root;
         try {
             root = objectMapper.readTree(rawPayload);
-        } catch (Exception e) {
+        } catch (JsonProcessingException e) {
             log.error("Failed to parse webhook payload", e);
             return Mono.just(ResponseEntity.badRequest()
                     .body(Map.of("error", "Invalid JSON payload")));

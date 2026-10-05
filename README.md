@@ -1,62 +1,48 @@
-# Spring Boot WebFlux Auth & IAM Service
+# Spring Boot WebFlux IAM & Authentication Microservice
 
-A reactive authentication and authorization service built with **Spring WebFlux**, **PostgreSQL (R2DBC)**, **JWT**, and **FusionAuth IAM** (supporting Google & Facebook OAuth2 social login).
+A production-ready reactive authentication and IAM microservice built with Spring Boot WebFlux, R2DBC (PostgreSQL), Redis, and FusionAuth integration.
 
----
+## 🚀 Key Features
 
-## 🚀 Quick Start
-
-### 1. Start Infrastructure (PostgreSQL, MailDev, FusionAuth)
-```bash
-docker compose up -d
-```
-- **PostgreSQL**: `localhost:5432`
-- **MailDev (Email/OTP Inbox)**: [http://localhost:1080](http://localhost:1080)
-- **FusionAuth Admin**: [http://localhost:9011](http://localhost:9011) (`fusionadmin@localhost.com` / `FusionAuth@2026!`)
-
-### 2. Start Application
-```bash
-cd springbootbasiclogin
-./mvnw spring-boot:run
-```
-- **API Base URL**: `http://localhost:8080`
-- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **Reactive WebFlux Stack**: Non-blocking I/O throughout the request lifecycle.
+- **Dual Persistence**:
+  - **PostgreSQL + R2DBC**: Reactive persistence for user identities, roles, and webhook audit events.
+  - **Redis 7 (Reactive)**: High-speed in-memory store for OTPs, verification codes, and password reset tokens with automatic TTL expiration.
+- **FusionAuth Integration & Webhooks**: Supports external identity providers and transactional webhook consumption with idempotency guarantees.
+- **Containerized & Kubernetes-Ready**:
+  - Multi-stage `Dockerfile` with distroless/alpine runtime.
+  - Kubernetes `Deployment` & `Service` for high availability.
+  - Kubernetes `CronJob` specifications for automated database pruning and maintenance.
 
 ---
 
-## 🔑 Default Seeded Credentials
+## 📋 API Endpoints Overview
 
-| Username | Password | Role |
-| :--- | :--- | :--- |
-| `admin` | `admin12345` | `ADMIN`, `USER` |
-| `JohnDoe` | `kX9#mQ2$vL7p` | `USER` |
-
----
-
-## 📡 Key Endpoints
-
-### 🔐 Authentication (`/auths`)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/auths/register` | Register new user |
-| `GET` | `/auths/verify-email?verifyOTP={otp}` | Verify email with 6-digit OTP |
-| `POST` | `/auths/login` | Login (Basic Auth header or JSON body) -> returns JWTs |
-| `POST` | `/auths/refresh` | Exchange refresh token for new access token |
-| `POST` | `/auths/fp?email={email}` | Request password reset token |
-| `POST` | `/auths/reset-password` | Reset password using token |
-| `GET` | `/auths/logout` | Invalidate token / Logout (`@Authenticated`) |
-
-### 🌐 Social Login (Google & Facebook)
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/auths/social/login?provider=google\|facebook` | Browser direct redirect to social login |
-| `GET` | `/auths/social/url?provider=google\|facebook` | Returns authorization URL for frontend/apps |
-| `GET` / `POST` | `/auths/social/callback` | OAuth2 callback, provisions user, returns JWTs |
-
-### 👤 User Management (`/users`)
-| Method | Endpoint | Description | Required Role |
+| Method | Endpoint | Description | Access |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/users/all` | List all users | `ADMIN` |
+| `POST` | `/auths/register` | Register new user account | Public |
+| `POST` | `/auths/verify-email` | Verify registration OTP code | Public |
+| `POST` | `/auths/login` | Authenticate with credentials | Public |
+| `POST` | `/auths/refresh` | Refresh expired JWT access token | Public |
+| `POST` | `/auths/fp` | Request forgot password OTP | Public |
+| `POST` | `/auths/reset-password` | Reset password using verified OTP | Public |
+| `POST` | `/auths/social/login` | Initiate social login provider redirect | Public |
+| `POST` | `/auths/social/callback` | Handle OAuth2/OIDC social callback | Public |
+| `POST` | `/webhooks/fusionauth` | Ingest FusionAuth event webhooks | Signature Verified |
 | `GET` | `/users?userId={id}` | Get user by ID | `USER` or `ADMIN` |
 | `PUT` | `/users/update?userId={id}` | Update user details | `USER` or `ADMIN` |
 | `DELETE` | `/users?userId={id}` | Delete user | `ADMIN` |
+
+---
+
+## ⏱️ Scheduled CronJobs & K9s Management
+
+Automated database maintenance and cleanup tasks are managed via **Kubernetes CronJobs** and monitored through **K9s**:
+
+| CronJob Name | Schedule | Target | Description |
+| :--- | :--- | :--- | :--- |
+| `cleanup-expired-otps` | Daily at 02:00 AM | `verification_otp` | Deletes expired verification OTPs & tokens older than 24h |
+| `purge-webhook-events` | Weekly (Sun 03:00 AM) | `processed_webhook_events` | Purges idempotency webhook records older than 30 days |
+| `cleanup-unverified-users` | Weekly (Sun 04:00 AM) | `users` | Prunes abandoned unverified accounts without active OTPs |
+
+See [K8S_CRONJOB_GUIDE.md](file:///c:/Users/Laggerbomb/OneDrive/Documents/Default%20Project/Springboot-BasicAuth-Webflux/K8S_CRONJOB_GUIDE.md) for full deployment instructions, testing steps, and K9s operations.

@@ -1,10 +1,13 @@
 package com.example.springbootbasiclogin.repo;
 
 import com.example.springbootbasiclogin.entity.VerificationOTP;
+import org.springframework.data.r2dbc.repository.Modifying;
+import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Repository
@@ -16,4 +19,8 @@ public interface VerificationTokenRepository extends ReactiveCrudRepository<Veri
     Mono<VerificationOTP> findByUserId(int userId);
 
     Mono<Void> deleteByUserId(int userId);
+
+    @Modifying
+    @Query("DELETE FROM verification_otp WHERE created_at < :cutoffTime")
+    Mono<Long> deleteExpiredOtps(ZonedDateTime cutoffTime);
 }

@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cleanup-unverified-users
+  namespace: default
+  labels:
+    app: springboot-iam-cron
+    job-type: maintenance
+spec:
+  # Run weekly on Sunday at 04:00 AM
+  schedule: "0 4 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 180
+      template:
+        metadata:
+          labels:
+            app: cleanup-unverified-users
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: curl-trigger
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Triggering unverified users cleanup job..."
+                  RESPONSE=$(curl -s -S -f -X POST \
+                    -H "Content-Type: application/json" \
+                    http://springboot-iam-service.default.svc.cluster.local:8080/internal/jobs/cleanup-unverified-users)
+                  echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Response: $RESPONSE"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  cpu: 50m
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000

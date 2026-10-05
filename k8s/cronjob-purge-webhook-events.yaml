@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: purge-webhook-events
+  namespace: default
+  labels:
+    app: springboot-iam-cron
+    job-type: maintenance
+spec:
+  # Run weekly on Sunday at 03:00 AM
+  schedule: "0 3 * * 0"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 120
+      template:
+        metadata:
+          labels:
+            app: purge-webhook-events
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: curl-trigger
+              image: curlimages/curl:8.10.1
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Triggering purge webhook events job..."
+                  RESPONSE=$(curl -s -S -f -X POST \
+                    -H "Content-Type: application/json" \
+                    http://springboot-iam-service.default.svc.cluster.local:8080/internal/jobs/purge-webhook-events)
+                  echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] Response: $RESPONSE"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 16Mi
+                limits:
+                  cpu: 50m
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 1000

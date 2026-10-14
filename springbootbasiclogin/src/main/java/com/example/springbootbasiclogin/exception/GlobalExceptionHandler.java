@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
         String message = messageUtil.getMessage(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER.getMessageKey());
         ErrorResponse response = ErrorResponse.builder()
                 .resultCode(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER.getCode())
-                .resultMsg(message != null ? message : ex.getMessage())
+                .resultMsg(message != null ? message : "Invalid or missing parameter.")
                 .build();
 
         return Mono.just(ResponseEntity
@@ -36,15 +36,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public Mono<ResponseEntity<ErrorResponse>> handleMissedException(Exception ex) {
-        log.error("handleMissedException", ex);
+        log.error("Unhandled internal server exception: ", ex);
 
+        String message = messageUtil.getMessage(AuthResponseCode.AUTH_000500_SERVER_ERROR.getMessageKey());
         ErrorResponse response = ErrorResponse.builder()
-                .resultCode(AuthResponseCode.AUTH_000520_NOT_FOUND.getCode())
-                .resultMsg(ex.getMessage())
+                .resultCode(AuthResponseCode.AUTH_000500_SERVER_ERROR.getCode())
+                .resultMsg(message != null ? message : "An unexpected internal server error occurred. Please contact support.")
                 .build();
 
         return Mono.just(ResponseEntity
-                .status(AuthResponseCode.AUTH_000520_NOT_FOUND.getHttpStatus())
+                .status(AuthResponseCode.AUTH_000500_SERVER_ERROR.getHttpStatus())
                 .body(response));
     }
 

@@ -14,6 +14,7 @@ import java.time.Duration;
 public class OtpRedisServiceImpl implements OtpRedisService {
 
     private static final String OTP_VERIFY_PREFIX = "otp:verify:";
+    private static final String OTP_EMAIL_PREFIX = "otp:verify:email:";
     private static final String TOKEN_RESET_PREFIX = "token:reset:";
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
@@ -27,12 +28,52 @@ public class OtpRedisServiceImpl implements OtpRedisService {
     }
 
     @Override
+    public Mono<Boolean> saveVerificationOtp(String email, int otp, int userId, Duration ttl) {
+        if (email == null || email.isBlank()) {
+            return saveVerificationOtp(otp, userId, ttl);
+        }
+        String emailKey = OTP_EMAIL_PREFIX + email.toLowerCase().trim();
+        String legacyKey = OTP_VERIFY_PREFIX + otp;
+        String emailVal = otp + ":" + userId;
+        String legacyVal = String.valueOf(userId);
+        log.debug("Saving scoped verification OTP for email={} userId={} ttl={}s", email, userId, ttl.toSeconds());
+        return redisTemplate.opsForValue().set(emailKey, emailVal, ttl)
+                .then(redisTemplate.opsForValue().set(legacyKey, legacyVal, ttl));
+    }
+
+    @Override
     public Mono<Integer> getAndEvictVerificationOtp(int otp) {
         String key = OTP_VERIFY_PREFIX + otp;
         // getAndDelete is the reactive equivalent of GETDEL (atomic get + delete)
         return redisTemplate.opsForValue().getAndDelete(key)
                 .flatMap(this::safeParseInteger)
                 .doOnNext(userId -> log.debug("Evicted verification OTP for userId={}", userId));
+    }
+
+    @Override
+    public Mono<Integer> getAndEvictVerificationOtp(String email, int otp) {
+        if (email == null || email.isBlank()) {
+            return getAndEvictVerificationOtp(otp);
+        }
+        String emailKey = OTP_EMAIL_PREFIX + email.toLowerCase().trim();
+        return redisTemplate.opsForValue().getAndDelete(emailKey)
+                .flatMap(val -> {
+                    String[] parts = val.split(":", 2);
+                    if (parts.length == 2) {
+                        try {
+                            int savedOtp = Integer.parseInt(parts[0]);
+                            int userId = Integer.parseInt(parts[1]);
+                            if (savedOtp == otp) {
+                                return redisTemplate.opsForValue().delete(OTP_VERIFY_PREFIX + otp)
+                                        .thenReturn(userId);
+                            }
+                        } catch (NumberFormatException e) {
+                            log.error("Failed to parse OTP pair from Redis: {}", e.getMessage());
+                        }
+                    }
+                    return Mono.empty();
+                })
+                .switchIfEmpty(Mono.defer(() -> getAndEvictVerificationOtp(otp)));
     }
 
     @Override

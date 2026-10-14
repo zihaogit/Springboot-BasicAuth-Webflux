@@ -21,9 +21,6 @@ public class RegisterRequest {
     private String password;
 
     @NotBlank
-    private String role;
-
-    @NotBlank
     @Email
     @Size(max = 255)
     @Schema(description = "Email that wants to be registered", example = "user@example.com")

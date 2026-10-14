@@ -1,12 +1,17 @@
+# ==============================================================================
+# Spring Boot Configuration Template (application.yml.example)
+# Copy this file to application.yml or supply these variables in your environment/.env
+# ==============================================================================
+
 spring:
   r2dbc:
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:root}
-    url: r2dbc:postgresql://localhost:5432/${POSTGRES_DB:security_assignment}
+    url: r2dbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:security_assignment}
   flyway:
     username: ${spring.r2dbc.username}
     password: ${spring.r2dbc.password}
-    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:security_assignment}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:security_assignment}
     locations: classpath:db/migration/common,classpath:db/migration/dev
     baseline-on-migrate: true
   data:
@@ -15,7 +20,7 @@ spring:
         enabled: false
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD}
       timeout: 2000ms
   jackson:
     time-zone: ${APP_TIMEZONE:Asia/Singapore}
@@ -25,10 +30,10 @@ spring:
 app:
   timezone: ${APP_TIMEZONE:Asia/Singapore}
   base-url: ${APP_BASE_URL:http://localhost:8080}
-  #for email (localhost)
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}
   mail:
-    host: log
-    port: 1025
+    host: ${MAIL_HOST:log}
+    port: ${MAIL_PORT:1025}
     properties:
       mail:
         smtp:
@@ -36,16 +41,17 @@ app:
 
 logging:
   level:
-    #set root logging to "WARN"
     root: INFO
     org:
       springframework:
-        # set spring security logging level to "INFO"
         security: INFO
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SWAGGER_ENABLED:false}
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
 
 auth:
   otp-expiry: ${AUTH_OTP_EXPIRY:300s}
@@ -55,28 +61,23 @@ auth:
     from: noreply@yourdomain.com
     name: XXX Company
   jwt:
-    secret: ${JWT_SECRET:change-me-to-a-long-random-secret-at-least-32-chars}
+    secret: ${JWT_SECRET}
     issuer: springboot-basiclogin
-    access-token-ttl: 2h
-    refresh-token-ttl: 24h
+    access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:2h}
+    refresh-token-ttl: ${JWT_REFRESH_TOKEN_TTL:24h}
   fusionauth:
     base-url: ${FUSIONAUTH_URL:http://localhost:9011}
-    client-id: ${FUSIONAUTH_CLIENT_ID:514556d8-c2d9-4ead-ad8f-24f08fb68d11}
-    client-secret: ${FUSIONAUTH_CLIENT_SECRET:qfftDP4o-WLR3eayLM1jvI7-xrOqlGt3mYr2zVX9g3E}
+    client-id: ${FUSIONAUTH_CLIENT_ID}
+    client-secret: ${FUSIONAUTH_CLIENT_SECRET}
     redirect-uri: ${FUSIONAUTH_REDIRECT_URI:http://localhost:8080/auths/social/callback}
-    api-key: ${FUSIONAUTH_API_KEY:VgM8ecnDyunG-8uA4ZirJyYX7ky5An4rKbW1bwr8vyT4sEj_wWxzZlvj}
+    api-key: ${FUSIONAUTH_API_KEY}
     idp-ids:
-      google: ${FUSIONAUTH_IDP_GOOGLE_ID:a021e9c4-0270-4efa-8aaf-88ab91245944}
-      facebook: ${FUSIONAUTH_IDP_FACEBOOK_ID:7fb58645-ca0d-4525-ae91-4ec41da1240a}
+      google: ${FUSIONAUTH_IDP_GOOGLE_ID}
+      facebook: ${FUSIONAUTH_IDP_FACEBOOK_ID}
   webhook:
-    secret: ${FUSIONAUTH_WEBHOOK_SECRET:my-webhook-fusion-12345-secret}
-    signature-key: ${FUSIONAUTH_WEBHOOK_SIGNATURE_KEY:koxGfHbSgXZ2RODDSFlUoT9ImaFuTZjesIvE95JTLm0=}
+    secret: ${FUSIONAUTH_WEBHOOK_SECRET}
+    signature-key: ${FUSIONAUTH_WEBHOOK_SIGNATURE_KEY}
     max-event-age-seconds: ${FUSIONAUTH_WEBHOOK_MAX_AGE_SECONDS:300}
     rate-limit:
       max-attempts: ${FUSIONAUTH_WEBHOOK_RATE_LIMIT_MAX:100}
       window-seconds: ${FUSIONAUTH_WEBHOOK_RATE_LIMIT_WINDOW:60}
-
-
-
-
-

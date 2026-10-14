@@ -139,6 +139,8 @@ public class ApplicationPropertiesConfig {
         @NotBlank
         private String baseUrl;
 
+        private List<String> allowedOrigins;
+
         @NotNull
         @Valid
         private AppMailProperties mail = new AppMailProperties();
@@ -232,6 +234,8 @@ public class ApplicationPropertiesConfig {
         @NotNull
         @NotBlank
         private String path;
+
+        private boolean enabled = true;
     }
 
     @Data

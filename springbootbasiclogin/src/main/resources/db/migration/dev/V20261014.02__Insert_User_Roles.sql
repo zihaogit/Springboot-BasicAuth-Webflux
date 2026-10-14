@@ -1,4 +1,7 @@
--- Insert into users
+-- V20261014.02__Insert_User_Roles.sql
+-- Development seed data for Users and Roles
+
+-- Insert seed users
 INSERT INTO users (
     username,
     password,
@@ -17,7 +20,7 @@ INSERT INTO users (
 ) VALUES
     (
         'JohnDoe',
-        '{bcrypt}$2a$10$uUrOkbePqGEjlcwEpd/1y.K6/PDFytlGmrCr/Y6aQA9/SKjfJUmlm', -- kX9#mQ2$vL7p
+        '$2a$10$uUrOkbePqGEjlcwEpd/1y.K6/PDFytlGmrCr/Y6aQA9/SKjfJUmlm',
         'John',
         'Doe',
         'john@example.com',
@@ -33,7 +36,7 @@ INSERT INTO users (
     ),
     (
         'admin',
-        '{bcrypt}$2a$12$7nyVIeYRr3QzFTT.BanJluTFSu2018rZoP14JI3eqthlBN8F9U/HW', -- admin12345
+        '$2a$12$7nyVIeYRr3QzFTT.BanJluTFSu2018rZoP14JI3eqthlBN8F9U/HW',
         'Admin',
         'One',
         'admin@example.com',
@@ -48,16 +51,16 @@ INSERT INTO users (
         TRUE
     );
 
--- Insert into roles (role_id is auto-generated)
+-- Insert seed roles
 INSERT INTO roles (
     user_id,
     role
 ) VALUES
     (
-        (SELECT id FROM users WHERE username = 'JohnDoe'), -- Reference JohnDoe's user_id
+        (SELECT id FROM users WHERE username = 'JohnDoe'),
         'USER'
     ),
     (
-        (SELECT id FROM users WHERE username = 'admin'), -- Reference admin's user_id
+        (SELECT id FROM users WHERE username = 'admin'),
         'ADMIN'
     );

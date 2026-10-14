@@ -1,5 +1,6 @@
 package com.example.springbootbasiclogin.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -25,6 +26,7 @@ public class Users {
     @Column("username")
     private String username;
 
+    @JsonIgnore
     @Column("password")
     private String password;
 
@@ -64,6 +66,10 @@ public class Users {
     @Column("verified")
     private boolean verified;
 
+    @JsonIgnore
     @Column("fusionauth_user_id")
     private String fusionAuthUserId;
+
+    @Column("created_at")
+    private java.time.ZonedDateTime createdAt;
 }

@@ -20,13 +20,11 @@ public interface OtpRedisService {
      */
     Mono<Boolean> saveVerificationOtp(int otp, int userId, Duration ttl);
 
-    /**
-     * Atomically retrieve and delete a verification OTP (single-use).
-     *
-     * @param otp the 6-digit OTP code
-     * @return the associated userId, or empty Mono if expired / not found
-     */
+    Mono<Boolean> saveVerificationOtp(String email, int otp, int userId, Duration ttl);
+
     Mono<Integer> getAndEvictVerificationOtp(int otp);
+
+    Mono<Integer> getAndEvictVerificationOtp(String email, int otp);
 
     /**
      * Store a password-reset token in Redis with automatic expiration.

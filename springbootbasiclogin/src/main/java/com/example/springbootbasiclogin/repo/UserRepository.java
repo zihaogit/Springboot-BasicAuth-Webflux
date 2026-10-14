@@ -22,6 +22,6 @@ public interface UserRepository extends ReactiveCrudRepository<Users, Integer> {
     @Query("SELECT * FROM users WHERE username = :username AND verified = true")
     Mono<Users> findByUsernameAndStatus(String username);
 
-    @Query("SELECT u.id FROM users u WHERE u.verified = false AND NOT EXISTS (SELECT 1 FROM verification_otp vo WHERE vo.user_id = u.id)")
-    Flux<Integer> findAbandonedUnverifiedUserIds();
+    @Query("SELECT u.id FROM users u WHERE u.verified = false AND (u.created_at IS NOT NULL AND u.created_at < :cutoffTime)")
+    Flux<Integer> findAbandonedUnverifiedUserIds(java.time.ZonedDateTime cutoffTime);
 }

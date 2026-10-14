@@ -57,8 +57,8 @@ public class WebhookSecurityService {
     public boolean verifySecret(String headerSecret) {
         String configuredSecret = applicationProperties.getAuth().getWebhook().getSecret();
         if (configuredSecret == null || configuredSecret.isBlank()) {
-            // No secret configured — skip this check
-            return true;
+            log.error("Webhook secret is NOT configured; rejecting incoming webhook request");
+            return false;
         }
         if (headerSecret == null || headerSecret.isBlank()) {
             log.warn("Webhook secret header missing but secret is configured");
@@ -92,8 +92,8 @@ public class WebhookSecurityService {
     public boolean verifySignature(String rawPayload, String signatureHeader, String signatureJwtHeader) {
         String signingKey = applicationProperties.getAuth().getWebhook().getSignatureKey();
         if (signingKey == null || signingKey.isBlank()) {
-            log.debug("No webhook signature key configured — skipping signature verification");
-            return true;
+            log.error("No webhook signature key configured — rejecting webhook request");
+            return false;
         }
 
         // 1. Prefer native FusionAuth JWT signature if present

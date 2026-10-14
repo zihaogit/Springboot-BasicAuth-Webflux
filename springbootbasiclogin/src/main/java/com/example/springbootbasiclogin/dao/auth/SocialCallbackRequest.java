@@ -12,4 +12,6 @@ public class SocialCallbackRequest {
 
     @NotBlank(message = "Authorization code cannot be blank")
     private String code;
+
+    private String state;
 }

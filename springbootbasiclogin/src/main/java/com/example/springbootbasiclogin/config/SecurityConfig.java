@@ -16,6 +16,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
+import org.springframework.security.config.Customizer;
+import org.springframework.security.web.server.header.XFrameOptionsServerHttpHeadersWriter;
+
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -27,6 +31,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationWebFilter jwtAuthenticationWebFilter;
     private final MessageUtil messageUtil;
+    private final ApplicationPropertiesConfig applicationProperties;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -36,9 +41,13 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        List<String> origins = applicationProperties.getApp().getAllowedOrigins();
+        if (origins == null || origins.isEmpty()) {
+            origins = List.of(applicationProperties.getApp().getBaseUrl());
+        }
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With", "Origin"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
@@ -53,15 +62,30 @@ public class SecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
-                .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers(
-                                "/auths/register", "/auths/verify-email", "/auths/verify-email/**",
-                                "/auths/fp", "/auths/reset-password", "/auths/login", "/auths/refresh",
-                                "/auths/social/**", "/webhooks/**", "/internal/**",
-                                "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**"
-                        ).permitAll()
-                        .anyExchange().authenticated()
+                .headers(headers -> headers
+                        .hsts(hsts -> hsts.maxAge(Duration.ofDays(365)).includeSubdomains(true))
+                        .frameOptions(frameOptions -> frameOptions.mode(XFrameOptionsServerHttpHeadersWriter.Mode.DENY))
+                        .contentTypeOptions(Customizer.withDefaults())
+                        .xssProtection(Customizer.withDefaults())
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none'; object-src 'none';"))
                 )
+                .authorizeExchange(exchanges -> {
+                    var authz = exchanges
+                            .pathMatchers(
+                                    "/auths/register", "/auths/verify-email", "/auths/verify-email/**",
+                                    "/auths/fp", "/auths/reset-password", "/auths/login", "/auths/refresh",
+                                    "/auths/social/**", "/webhooks/**"
+                            ).permitAll();
+
+                    if (applicationProperties.getSpringdoc().getSwaggerUi().isEnabled()) {
+                        authz.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").permitAll();
+                    } else {
+                        authz.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").hasRole("ADMIN");
+                    }
+
+                    authz.pathMatchers("/internal/**").hasRole("ADMIN")
+                            .anyExchange().authenticated();
+                })
                 .addFilterAt(jwtAuthenticationWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }

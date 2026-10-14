@@ -84,9 +84,10 @@ public class InternalJobController {
     @PostMapping("/cleanup-unverified-users")
     @org.springframework.transaction.annotation.Transactional
     public Mono<ResponseEntity<Map<String, Object>>> cleanupUnverifiedUsers() {
-        log.info("Job [cleanup-unverified-users]: searching for unverified users without active OTP");
+        ZonedDateTime cutoff = ZonedDateTime.now().minusDays(7);
+        log.info("Job [cleanup-unverified-users]: searching for unverified users created before {}", cutoff);
 
-        return userRepository.findAbandonedUnverifiedUserIds()
+        return userRepository.findAbandonedUnverifiedUserIds(cutoff)
                 .flatMap(userId -> {
                     log.debug("Job [cleanup-unverified-users]: purging unverified userId={}", userId);
                     return roleRepository.deleteByUserId(userId)
@@ -99,7 +100,8 @@ public class InternalJobController {
                     return ResponseEntity.ok(Map.<String, Object>of(
                             "status", "SUCCESS",
                             "job", "cleanup-unverified-users",
-                            "deletedRecords", totalDeleted
+                            "deletedRecords", totalDeleted,
+                            "cutoffTime", cutoff.toString()
                     ));
                 });
     }

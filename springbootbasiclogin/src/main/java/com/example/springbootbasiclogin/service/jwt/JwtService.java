@@ -1,6 +1,8 @@
 package com.example.springbootbasiclogin.service.jwt;
 
 import com.example.springbootbasiclogin.config.ApplicationPropertiesConfig;
+import com.example.springbootbasiclogin.constant.AuthResponseCode;
+import com.example.springbootbasiclogin.exception.CustomException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.JwtParser;
@@ -29,13 +31,17 @@ public class JwtService {
     public JwtService(ApplicationPropertiesConfig applicationProperties) {
         this.applicationProperties = applicationProperties;
         String secret = applicationProperties.getAuth().getJwt().getSecret();
+        if (secret == null || secret.isBlank()) {
+            throw new CustomException(AuthResponseCode.AUTH_000105_INVALID_SECRET_KEY, "JWT secret cannot be null or empty.");
+        }
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (secretBytes.length < MIN_KEY_BYTES) {
-            byte[] padded = Arrays.copyOf(secretBytes, MIN_KEY_BYTES);
-            this.secretKey = Keys.hmacShaKeyFor(padded);
-        } else {
-            this.secretKey = Keys.hmacShaKeyFor(secretBytes);
+            throw new CustomException(AuthResponseCode.AUTH_000105_INVALID_SECRET_KEY,
+                    "JWT secret must be at least " + MIN_KEY_BYTES
+                    + " bytes (256 bits) for HMAC-SHA-256 security. Configured secret is only "
+                    + secretBytes.length + " bytes.");
         }
+        this.secretKey = Keys.hmacShaKeyFor(secretBytes);
         this.jwtParser = Jwts.parser().verifyWith(this.secretKey).build();
     }
 
@@ -81,7 +87,7 @@ public class JwtService {
             return jwtParser.parseSignedClaims(token).getPayload();
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("Invalid JWT token: {}", e.getMessage());
-            throw e;
+            throw new CustomException(AuthResponseCode.AUTH_000108_INVALID_JWT_OR_ACCESS_TOKEN, e);
         }
     }
 

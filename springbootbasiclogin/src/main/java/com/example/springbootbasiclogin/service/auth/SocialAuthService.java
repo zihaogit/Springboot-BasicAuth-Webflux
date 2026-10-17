@@ -42,6 +42,7 @@ public class SocialAuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthService authService;
     private final RoleSyncHelper roleSyncHelper;
+    private final org.springframework.data.redis.core.ReactiveRedisTemplate<String, String> redisTemplate;
 
     private final Map<String, String> idpCache = new ConcurrentHashMap<>();
 
@@ -131,7 +132,18 @@ public class SocialAuthService {
      * If a provider is specified (e.g. google, facebook, twitter), idp_hint is
      * attached with its resolved IdP UUID.
      */
+    public Mono<String> generateAndSaveOAuthState() {
+        String state = UUID.randomUUID().toString();
+        return redisTemplate.opsForValue()
+                .set("oauth:state:" + state, "1", Duration.ofMinutes(10))
+                .thenReturn(state);
+    }
+
     public String getAuthorizeUrl(String provider) {
+        return getAuthorizeUrl(provider, null);
+    }
+
+    public String getAuthorizeUrl(String provider, String state) {
         ApplicationPropertiesConfig.FusionAuthProperties config = applicationProperties.getAuth().getFusionauth();
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(config.getBaseUrl())
                 .path("/oauth2/authorize")
@@ -139,6 +151,10 @@ public class SocialAuthService {
                 .queryParam("redirect_uri", config.getRedirectUri())
                 .queryParam("response_type", "code")
                 .queryParam("scope", "openid email profile");
+
+        if (state != null && !state.isBlank()) {
+            builder.queryParam("state", state);
+        }
 
         if (provider != null && !provider.isBlank()) {
             String idpHint = resolveIdpHint(provider);
@@ -153,10 +169,24 @@ public class SocialAuthService {
      * provisions/updates the user in PostgreSQL, and issues application JWT tokens.
      */
     public Mono<TokenResponse> handleCallback(String code) {
+        return handleCallback(code, null);
+    }
+
+    public Mono<TokenResponse> handleCallback(String code, String state) {
         if (code == null || code.isBlank()) {
             return Mono.error(new CustomException(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER));
         }
 
+        if (state != null && !state.isBlank()) {
+            return redisTemplate.opsForValue().getAndDelete("oauth:state:" + state)
+                    .switchIfEmpty(Mono.error(new CustomException(AuthResponseCode.AUTH_000403_ACCESS_DENIED)))
+                    .then(exchangeCodeAndProvision(code));
+        }
+
+        return exchangeCodeAndProvision(code);
+    }
+
+    private Mono<TokenResponse> exchangeCodeAndProvision(String code) {
         ApplicationPropertiesConfig.FusionAuthProperties config = applicationProperties.getAuth().getFusionauth();
 
         return fusionAuthWebClient.post()
@@ -213,6 +243,9 @@ public class SocialAuthService {
             return Mono.error(new CustomException(AuthResponseCode.AUTH_000150_EMAIL_IS_REQUIRED));
         }
 
+        Object emailVerifiedObj = userInfo.get("email_verified");
+        boolean isEmailVerified = Boolean.TRUE.equals(emailVerifiedObj) || "true".equalsIgnoreCase(String.valueOf(emailVerifiedObj));
+
         String name = (String) userInfo.get("name");
         String givenName = (String) userInfo.get("given_name");
         String familyName = (String) userInfo.get("family_name");
@@ -227,13 +260,18 @@ public class SocialAuthService {
                 : Mono.empty();
 
         return userMono
-                .switchIfEmpty(Mono.defer(() -> userRepository.findByEmail(resolvedEmail)
-                        .flatMap(userByEmail -> {
-                            if (sub != null && !sub.isBlank()) {
-                                userByEmail.setFusionAuthUserId(sub);
-                            }
-                            return userRepository.save(userByEmail);
-                        })))
+                .switchIfEmpty(Mono.defer(() -> {
+                    if (!isEmailVerified) {
+                        return Mono.empty();
+                    }
+                    return userRepository.findByEmail(resolvedEmail)
+                            .flatMap(userByEmail -> {
+                                if (sub != null && !sub.isBlank()) {
+                                    userByEmail.setFusionAuthUserId(sub);
+                                }
+                                return userRepository.save(userByEmail);
+                            });
+                }))
                 .flatMap(existingUser -> handleExistingUser(existingUser, fusionAuthRoles))
                 .switchIfEmpty(Mono.defer(() -> provisionNewUser(resolvedEmail, sub, firstName, lastName, defaultUsername, fusionAuthRoles)));
     }

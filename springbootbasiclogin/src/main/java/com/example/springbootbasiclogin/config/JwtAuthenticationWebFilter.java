@@ -1,5 +1,6 @@
 package com.example.springbootbasiclogin.config;
 
+import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.service.jwt.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -33,9 +34,18 @@ public class JwtAuthenticationWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        String token = null;
 
         if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
-            String token = authHeader.substring(BEARER_PREFIX.length()).trim();
+            token = authHeader.substring(BEARER_PREFIX.length()).trim();
+        } else {
+            org.springframework.http.HttpCookie cookie = exchange.getRequest().getCookies().getFirst("access_token");
+            if (cookie != null && !cookie.getValue().isBlank()) {
+                token = cookie.getValue();
+            }
+        }
+
+        if (token != null) {
             try {
                 Claims claims = jwtService.parseAndValidateToken(token);
                 if (jwtService.isTokenType(claims, "ACCESS")) {
@@ -58,7 +68,7 @@ public class JwtAuthenticationWebFilter implements WebFilter {
                     return chain.filter(exchange)
                             .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth));
                 }
-            } catch (JwtException | IllegalArgumentException e) {
+            } catch (CustomException | JwtException | IllegalArgumentException e) {
                 log.warn("JWT authentication failed: {}", e.getMessage());
             }
         }

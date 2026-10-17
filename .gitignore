@@ -7,3 +7,6 @@
 
 # Environment secrets
 .env
+
+# Application config with local secrets (template tracked in application.yml.example)
+springbootbasiclogin/src/main/resources/application.yml

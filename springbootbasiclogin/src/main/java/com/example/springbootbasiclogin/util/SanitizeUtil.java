@@ -31,17 +31,4 @@ public final class SanitizeUtil {
         }
         return sanitized;
     }
-
-    /**
-     * Sanitizes an object by converting it to string and removing CRLF characters.
-     *
-     * @param input the raw object
-     * @return the sanitized string safe for logging
-     */
-    public static String forLog(Object input) {
-        if (input == null) {
-            return "";
-        }
-        return forLog(String.valueOf(input));
-    }
 }

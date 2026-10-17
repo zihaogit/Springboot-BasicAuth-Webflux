@@ -15,6 +15,7 @@ import com.example.springbootbasiclogin.repo.RoleRepository;
 import com.example.springbootbasiclogin.repo.UserRepository;
 import com.example.springbootbasiclogin.service.jwt.JwtService;
 import com.example.springbootbasiclogin.service.mail.EmailService;
+import com.example.springbootbasiclogin.util.SanitizeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
@@ -158,7 +159,7 @@ public class AuthService implements ReactiveUserDetailsService {
                     return isTokenRevoked(request.getRefreshToken(), username, issuedAt)
                             .flatMap(revoked -> {
                                 if (Boolean.TRUE.equals(revoked)) {
-                                    log.warn("Attempt to use revoked refresh token for user '{}'", username);
+                                    log.warn("Attempt to use revoked refresh token for user '{}'", SanitizeUtil.forLog(username));
                                     return Mono.error(new CustomException(AuthResponseCode.AUTH_000115_INVALID_REFRESH_TOKEN));
                                 }
                                 Duration ttl = applicationProperties.getAuth().getJwt().getRefreshTokenTtl();

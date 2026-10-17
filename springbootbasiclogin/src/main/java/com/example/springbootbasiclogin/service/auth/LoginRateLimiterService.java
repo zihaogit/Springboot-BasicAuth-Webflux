@@ -1,5 +1,6 @@
 package com.example.springbootbasiclogin.service.auth;
 
+import com.example.springbootbasiclogin.util.SanitizeUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
@@ -34,7 +35,7 @@ public class LoginRateLimiterService {
                         int attempts = Integer.parseInt(val);
                         boolean locked = attempts >= MAX_FAILED_ATTEMPTS;
                         if (locked) {
-                            log.warn("Login attempt rejected for user '{}' — account temporarily rate-limited ({} attempts)", username, attempts);
+                            log.warn("Login attempt rejected for user '{}' — account temporarily rate-limited ({} attempts)", SanitizeUtil.forLog(username), attempts);
                         }
                         return locked;
                     } catch (NumberFormatException e) {
@@ -51,7 +52,7 @@ public class LoginRateLimiterService {
         String key = buildKey(username);
         return redisTemplate.opsForValue().increment(key)
                 .flatMap(count -> {
-                    log.debug("Incremented failed login attempt counter for '{}' to {}", username, count);
+                    log.debug("Incremented failed login attempt counter for '{}' to {}", SanitizeUtil.forLog(username), count);
                     if (count == 1) {
                         return redisTemplate.expire(key, LOCK_WINDOW).then();
                     }
@@ -65,7 +66,7 @@ public class LoginRateLimiterService {
         }
         String key = buildKey(username);
         return redisTemplate.opsForValue().delete(key)
-                .doOnSuccess(deleted -> log.debug("Reset failed login attempts for '{}'", username))
+                .doOnSuccess(deleted -> log.debug("Reset failed login attempts for '{}'", SanitizeUtil.forLog(username)))
                 .then();
     }
 

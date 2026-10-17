@@ -58,33 +58,34 @@ public class AuthController {
     public Mono<TokenResponse> loginUser(
             @RequestHeader(name = HttpHeaders.AUTHORIZATION, required = false) String authHeader,
             @RequestBody(required = false) LoginRequest loginRequest,
-            Principal principal,
             ServerWebExchange exchange
     ) {
-        Mono<TokenResponse> tokenMono;
+        return extractCredentials(authHeader, loginRequest)
+                .flatMap(authService::loginUser)
+                .doOnNext(tokens -> setAuthCookies(exchange, tokens));
+    }
 
+    private Mono<LoginRequest> extractCredentials(String authHeader, LoginRequest loginRequest) {
         if (authHeader != null && authHeader.startsWith("Basic ")) {
             try {
                 String base64Credentials = authHeader.substring(6).trim();
                 String credentials = new String(Base64.getDecoder().decode(base64Credentials), StandardCharsets.UTF_8);
                 String[] parts = credentials.split(":", 2);
-                if (parts.length == 2) {
-                    tokenMono = authService.loginUser(new LoginRequest(parts[0], parts[1]));
-                } else {
-                    return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION));
+                if (parts.length == 2 && !parts[0].isBlank() && !parts[1].isBlank()) {
+                    return Mono.just(new LoginRequest(parts[0], parts[1]));
                 }
+                return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION));
             } catch (Exception e) {
                 return Mono.error(new CustomException(AuthResponseCode.AUTH_000104_INVALID_AUTHENTICATION, e));
             }
-        } else if (principal != null && principal.getName() != null) {
-            tokenMono = authService.generateTokensForUser(principal.getName());
-        } else if (loginRequest != null && loginRequest.getUsername() != null && loginRequest.getPassword() != null) {
-            tokenMono = authService.loginUser(loginRequest);
-        } else {
-            return Mono.error(new CustomException(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER));
         }
 
-        return tokenMono.doOnNext(tokens -> setAuthCookies(exchange, tokens));
+        if (loginRequest != null && loginRequest.getUsername() != null && !loginRequest.getUsername().isBlank()
+                && loginRequest.getPassword() != null && !loginRequest.getPassword().isBlank()) {
+            return Mono.just(loginRequest);
+        }
+
+        return Mono.error(new CustomException(AuthResponseCode.AUTH_000101_INVALID_OR_MISSING_PARAMETER));
     }
 
     @PostMapping("/refresh")

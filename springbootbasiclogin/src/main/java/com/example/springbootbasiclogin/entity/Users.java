@@ -6,7 +6,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -70,6 +72,11 @@ public class Users {
     @Column("fusionauth_user_id")
     private String fusionAuthUserId;
 
+    @CreatedDate
     @Column("created_at")
     private java.time.ZonedDateTime createdAt;
+
+    @LastModifiedDate
+    @Column("updated_at")
+    private java.time.ZonedDateTime updatedAt;
 }

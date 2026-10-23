@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.dao.auth;
+package com.example.springbootbasiclogin.dto.auth;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -25,6 +25,4 @@ public class RegisterRequest {
     @Size(max = 255)
     @Schema(description = "Email that wants to be registered", example = "user@example.com")
     private String email;
-
-
 }

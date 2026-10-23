@@ -1,6 +1,5 @@
 package com.example.springbootbasiclogin.config;
 
-import com.example.springbootbasiclogin.util.MessageUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +29,6 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationWebFilter jwtAuthenticationWebFilter;
-    private final MessageUtil messageUtil;
     private final ApplicationPropertiesConfig applicationProperties;
 
     @Bean

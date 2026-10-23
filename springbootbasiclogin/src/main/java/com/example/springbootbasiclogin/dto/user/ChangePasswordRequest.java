@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.dao.user;
+package com.example.springbootbasiclogin.dto.user;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

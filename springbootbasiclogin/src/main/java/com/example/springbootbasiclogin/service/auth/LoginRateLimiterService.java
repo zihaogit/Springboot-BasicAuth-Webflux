@@ -31,17 +31,14 @@ public class LoginRateLimiterService {
         String key = buildKey(username);
         return redisTemplate.opsForValue().get(key)
                 .map(val -> {
-                    try {
-                        int attempts = Integer.parseInt(val);
-                        boolean locked = attempts >= MAX_FAILED_ATTEMPTS;
-                        if (locked) {
-                            log.warn("Login attempt rejected for user '{}' — account temporarily rate-limited ({} attempts)", SanitizeUtil.forLog(username), attempts);
-                        }
-                        return locked;
-                    } catch (NumberFormatException e) {
-                        return false;
+                    int attempts = Integer.parseInt(val);
+                    boolean locked = attempts >= MAX_FAILED_ATTEMPTS;
+                    if (locked) {
+                        log.warn("Login attempt rejected for user '{}' — account temporarily rate-limited ({} attempts)", SanitizeUtil.forLog(username), attempts);
                     }
+                    return locked;
                 })
+                .onErrorReturn(NumberFormatException.class, false)
                 .defaultIfEmpty(false);
     }
 
@@ -53,7 +50,7 @@ public class LoginRateLimiterService {
         return redisTemplate.opsForValue().increment(key)
                 .flatMap(count -> {
                     log.debug("Incremented failed login attempt counter for '{}' to {}", SanitizeUtil.forLog(username), count);
-                    if (count == 1) {
+                    if (count != null && count == 1L) {
                         return redisTemplate.expire(key, LOCK_WINDOW).then();
                     }
                     return Mono.empty();
@@ -65,12 +62,12 @@ public class LoginRateLimiterService {
             return Mono.empty();
         }
         String key = buildKey(username);
-        return redisTemplate.opsForValue().delete(key)
-                .doOnSuccess(deleted -> log.debug("Reset failed login attempts for '{}'", SanitizeUtil.forLog(username)))
+        return redisTemplate.delete(key)
+                .doOnSuccess(deleted -> log.debug("Reset failed login attempts for '{}' (deleted: {})", SanitizeUtil.forLog(username), deleted))
                 .then();
     }
 
     private String buildKey(String username) {
-        return LOGIN_FAIL_PREFIX + username.toLowerCase().trim();
+        return LOGIN_FAIL_PREFIX + username.toLowerCase(java.util.Locale.ROOT).trim();
     }
 }

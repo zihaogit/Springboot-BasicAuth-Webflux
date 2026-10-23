@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import org.springframework.validation.annotation.Validated;
+
 import java.time.ZonedDateTime;
 import java.util.Map;
 
 @Slf4j
 @RestController
 @RequestMapping("/internal/jobs")
+@Validated
 @RequiredArgsConstructor
 public class InternalJobController {
 

@@ -10,8 +10,8 @@ spec:
   # Run weekly on Sunday at 04:00 AM
   schedule: "0 4 * * 0"
   concurrencyPolicy: Forbid
-  successfulJobsHistoryLimit: 3
-  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 0
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       backoffLimit: 2

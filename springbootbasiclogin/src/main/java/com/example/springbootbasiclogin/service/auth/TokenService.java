@@ -116,10 +116,14 @@ public class TokenService {
                     }
                     return redisTemplate.opsForValue().get(userKey)
                             .map(cutoffStr -> {
-                                long cutoff = Long.parseLong(cutoffStr);
-                                return issuedAt != null && issuedAt.toEpochMilli() <= cutoff;
+                                try {
+                                    long cutoff = Long.parseLong(cutoffStr);
+                                    return issuedAt != null && issuedAt.toEpochMilli() <= cutoff;
+                                } catch (NumberFormatException e) {
+                                    log.debug("Non-numeric revocation cutoff for user '{}', treating as not revoked", SanitizeUtil.forLog(username));
+                                    return false;
+                                }
                             })
-                            .onErrorReturn(NumberFormatException.class, false)
                             .defaultIfEmpty(false);
                 });
     }

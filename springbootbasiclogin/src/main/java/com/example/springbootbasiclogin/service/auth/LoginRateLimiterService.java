@@ -31,14 +31,18 @@ public class LoginRateLimiterService {
         String key = buildKey(username);
         return redisTemplate.opsForValue().get(key)
                 .map(val -> {
-                    int attempts = Integer.parseInt(val);
-                    boolean locked = attempts >= MAX_FAILED_ATTEMPTS;
-                    if (locked) {
-                        log.warn("Login attempt rejected for user '{}' — account temporarily rate-limited ({} attempts)", SanitizeUtil.forLog(username), attempts);
+                    try {
+                        int attempts = Integer.parseInt(val);
+                        boolean locked = attempts >= MAX_FAILED_ATTEMPTS;
+                        if (locked) {
+                            log.warn("Login attempt rejected for user '{}' — account temporarily rate-limited ({} attempts)", SanitizeUtil.forLog(username), attempts);
+                        }
+                        return locked;
+                    } catch (NumberFormatException e) {
+                        log.debug("Non-numeric rate-limit value for '{}', treating as unlocked", SanitizeUtil.forLog(username));
+                        return false;
                     }
-                    return locked;
                 })
-                .onErrorReturn(NumberFormatException.class, false)
                 .defaultIfEmpty(false);
     }
 

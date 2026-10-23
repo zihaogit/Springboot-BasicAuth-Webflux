@@ -39,6 +39,7 @@ public class LoginRateLimiterService {
                         }
                         return locked;
                     } catch (NumberFormatException e) {
+                        log.debug("Non-numeric rate-limit value for '{}', treating as unlocked", SanitizeUtil.forLog(username));
                         return false;
                     }
                 })
@@ -53,7 +54,7 @@ public class LoginRateLimiterService {
         return redisTemplate.opsForValue().increment(key)
                 .flatMap(count -> {
                     log.debug("Incremented failed login attempt counter for '{}' to {}", SanitizeUtil.forLog(username), count);
-                    if (count == 1) {
+                    if (count != null && count == 1L) {
                         return redisTemplate.expire(key, LOCK_WINDOW).then();
                     }
                     return Mono.empty();
@@ -65,12 +66,12 @@ public class LoginRateLimiterService {
             return Mono.empty();
         }
         String key = buildKey(username);
-        return redisTemplate.opsForValue().delete(key)
-                .doOnSuccess(deleted -> log.debug("Reset failed login attempts for '{}'", SanitizeUtil.forLog(username)))
+        return redisTemplate.delete(key)
+                .doOnSuccess(deleted -> log.debug("Reset failed login attempts for '{}' (deleted: {})", SanitizeUtil.forLog(username), deleted))
                 .then();
     }
 
     private String buildKey(String username) {
-        return LOGIN_FAIL_PREFIX + username.toLowerCase().trim();
+        return LOGIN_FAIL_PREFIX + username.toLowerCase(java.util.Locale.ROOT).trim();
     }
 }

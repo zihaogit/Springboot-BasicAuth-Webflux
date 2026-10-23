@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.dao.exception;
+package com.example.springbootbasiclogin.dto.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

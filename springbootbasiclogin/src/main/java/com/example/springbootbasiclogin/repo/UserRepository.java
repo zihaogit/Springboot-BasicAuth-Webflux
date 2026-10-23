@@ -24,4 +24,7 @@ public interface UserRepository extends ReactiveCrudRepository<Users, Integer> {
 
     @Query("SELECT u.id FROM users u WHERE u.verified = false AND (u.created_at IS NOT NULL AND u.created_at < :cutoffTime)")
     Flux<Integer> findAbandonedUnverifiedUserIds(java.time.ZonedDateTime cutoffTime);
+
+    @Query("SELECT * FROM users ORDER BY id LIMIT :limit OFFSET :offset")
+    Flux<Users> findAllPaginated(int limit, long offset);
 }

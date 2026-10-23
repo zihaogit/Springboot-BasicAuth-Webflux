@@ -1,7 +1,7 @@
 package com.example.springbootbasiclogin.exception;
 
 import com.example.springbootbasiclogin.constant.AuthResponseCode;
-import com.example.springbootbasiclogin.dao.exception.ErrorResponse;
+import com.example.springbootbasiclogin.dto.exception.ErrorResponse;
 import com.example.springbootbasiclogin.util.MessageUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;

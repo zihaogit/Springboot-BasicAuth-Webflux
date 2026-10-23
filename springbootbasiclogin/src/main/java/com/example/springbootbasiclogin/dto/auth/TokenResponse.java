@@ -1,4 +1,4 @@
-package com.example.springbootbasiclogin.dao.auth;
+package com.example.springbootbasiclogin.dto.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

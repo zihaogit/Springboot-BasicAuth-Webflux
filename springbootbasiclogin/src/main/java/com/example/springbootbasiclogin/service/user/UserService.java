@@ -1,7 +1,7 @@
 package com.example.springbootbasiclogin.service.user;
 
-import com.example.springbootbasiclogin.dao.user.ChangePasswordRequest;
-import com.example.springbootbasiclogin.dao.user.UserProfileUpdateRequest;
+import com.example.springbootbasiclogin.dto.user.ChangePasswordRequest;
+import com.example.springbootbasiclogin.dto.user.UserProfileUpdateRequest;
 import com.example.springbootbasiclogin.entity.Users;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

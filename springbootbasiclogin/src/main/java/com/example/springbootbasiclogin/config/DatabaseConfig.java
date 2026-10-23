@@ -5,6 +5,7 @@ import io.r2dbc.spi.ConnectionFactory;
 import org.flywaydb.core.Flyway;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.r2dbc.config.EnableR2dbcAuditing;
 import org.springframework.data.r2dbc.convert.R2dbcCustomConversions;
 import org.springframework.data.r2dbc.dialect.DialectResolver;
 import org.springframework.data.r2dbc.dialect.R2dbcDialect;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
+@EnableR2dbcAuditing
 public class DatabaseConfig {
 
     @Bean(initMethod = "migrate")

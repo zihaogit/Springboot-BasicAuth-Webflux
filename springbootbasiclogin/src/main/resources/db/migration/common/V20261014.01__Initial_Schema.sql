@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS users (
     active BOOLEAN DEFAULT TRUE,
     verified BOOLEAN DEFAULT FALSE,
     fusionauth_user_id VARCHAR(64),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_fusionauth_user_id ON users(fusionauth_user_id);

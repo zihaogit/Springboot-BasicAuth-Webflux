@@ -32,7 +32,6 @@ A production-ready reactive authentication and IAM microservice built with Sprin
 | `GET` | `/users?userId={id}` | Get user by ID | `USER` or `ADMIN` |
 | `PUT` | `/users/update?userId={id}` | Update user details | `USER` or `ADMIN` |
 | `DELETE` | `/users?userId={id}` | Delete user | `ADMIN` |
-
 ---
 
 ## ⏱️ Scheduled CronJobs & K9s Management
@@ -44,5 +43,3 @@ Automated database maintenance and cleanup tasks are managed via **Kubernetes Cr
 | `cleanup-expired-otps` | Daily at 02:00 AM | `verification_otp` | Deletes expired verification OTPs & tokens older than 24h |
 | `purge-webhook-events` | Weekly (Sun 03:00 AM) | `processed_webhook_events` | Purges idempotency webhook records older than 30 days |
 | `cleanup-unverified-users` | Weekly (Sun 04:00 AM) | `users` | Prunes abandoned unverified accounts without active OTPs |
-
-See [K8S_CRONJOB_GUIDE.md](file:///c:/Users/Laggerbomb/OneDrive/Documents/Default%20Project/Springboot-BasicAuth-Webflux/K8S_CRONJOB_GUIDE.md) for full deployment instructions, testing steps, and K9s operations.

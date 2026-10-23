@@ -1,6 +1,6 @@
-package com.example.springbootbasiclogin.dao.exception;
+package com.example.springbootbasiclogin.dto.exception;
 
-import com.example.springbootbasiclogin.dao.BaseResponse;
+import com.example.springbootbasiclogin.dto.BaseResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +14,7 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class ErrorResponse extends BaseResponse {
+public class ErrorResponse extends BaseResponse<Object> {
 
     @Data
     @Builder

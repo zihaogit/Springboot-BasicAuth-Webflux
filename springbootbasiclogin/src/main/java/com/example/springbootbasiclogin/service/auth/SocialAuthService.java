@@ -3,14 +3,15 @@ package com.example.springbootbasiclogin.service.auth;
 import com.example.springbootbasiclogin.config.ApplicationPropertiesConfig;
 import com.example.springbootbasiclogin.config.JwtAuthenticationWebFilter;
 import com.example.springbootbasiclogin.constant.AuthResponseCode;
-import com.example.springbootbasiclogin.dao.auth.TokenResponse;
+import com.example.springbootbasiclogin.dto.auth.TokenResponse;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.helper.RoleSyncHelper;
 import com.example.springbootbasiclogin.repo.UserRepository;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,11 +31,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class SocialAuthService {
+
+    private static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
     private final WebClient fusionAuthWebClient;
     private final ApplicationPropertiesConfig applicationProperties;
@@ -46,55 +50,52 @@ public class SocialAuthService {
 
     private final Map<String, String> idpCache = new ConcurrentHashMap<>();
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void initIdpCache() {
-        refreshIdpCache();
+        refreshIdpCache()
+                .subscribe(
+                        null,
+                        error -> log.warn("Error refreshing FusionAuth identity provider cache: {}", error.getMessage())
+                );
     }
 
-    public void refreshIdpCache() {
+    public Mono<Void> refreshIdpCache() {
         ApplicationPropertiesConfig.FusionAuthProperties config = applicationProperties.getAuth().getFusionauth();
         if (config.getApiKey() == null || config.getApiKey().isBlank()) {
-            return;
+            return Mono.empty();
         }
-        try {
-            fusionAuthWebClient.get()
-                    .uri("/api/identity-provider")
-                    .header(HttpHeaders.AUTHORIZATION, config.getApiKey())
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                    .timeout(Duration.ofSeconds(3))
-                    .doOnNext(response -> {
-                        Object listObj = response.get("identityProviders");
-                        if (listObj instanceof List<?> list) {
-                            for (Object item : list) {
-                                if (item instanceof Map<?, ?> map) {
-                                    String id = String.valueOf(map.get("id"));
-                                    String type = map.get("type") != null ? String.valueOf(map.get("type")).toLowerCase() : null;
-                                    String name = map.get("name") != null ? String.valueOf(map.get("name")).toLowerCase() : null;
-                                    if (id != null && !id.isBlank()) {
-                                        if (type != null) {
-                                            idpCache.put(type, id);
-                                        }
-                                        if (name != null) {
-                                            idpCache.put(name, id);
-                                        }
+        return fusionAuthWebClient.get()
+                .uri("/api/identity-provider")
+                .header(HttpHeaders.AUTHORIZATION, config.getApiKey())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .timeout(Duration.ofSeconds(3))
+                .doOnNext(response -> {
+                    Object listObj = response.get("identityProviders");
+                    if (listObj instanceof List<?> list) {
+                        for (Object item : list) {
+                            if (item instanceof Map<?, ?> map) {
+                                String id = String.valueOf(map.get("id"));
+                                String type = map.get("type") != null ? String.valueOf(map.get("type")).toLowerCase() : null;
+                                String name = map.get("name") != null ? String.valueOf(map.get("name")).toLowerCase() : null;
+                                if (id != null && !id.isBlank()) {
+                                    if (type != null) {
+                                        idpCache.put(type, id);
+                                    }
+                                    if (name != null) {
+                                        idpCache.put(name, id);
                                     }
                                 }
                             }
-                            log.info("Loaded {} FusionAuth Identity Provider mappings: {}", idpCache.size(), idpCache.keySet());
                         }
-                    })
-                    .onErrorResume(e -> {
-                        log.warn("Could not pre-fetch FusionAuth identity providers: {}", e.getMessage());
-                        return Mono.empty();
-                    })
-                    .subscribe(
-                            result -> {},
-                            error -> log.warn("Error refreshing FusionAuth identity provider cache: {}", error.getMessage())
-                    );
-        } catch (Exception e) {
-            log.warn("Failed to initiate Identity Provider lookup: {}", e.getMessage());
-        }
+                        log.info("Loaded {} FusionAuth Identity Provider mappings: {}", idpCache.size(), idpCache.keySet());
+                    }
+                })
+                .then()
+                .onErrorResume(e -> {
+                    log.warn("Could not pre-fetch FusionAuth identity providers: {}", e.getMessage());
+                    return Mono.empty();
+                });
     }
 
     public String resolveIdpHint(String provider) {
@@ -119,12 +120,7 @@ public class SocialAuthService {
     }
 
     private static boolean isUuid(String value) {
-        try {
-            UUID.fromString(value);
-            return true;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        return value != null && UUID_PATTERN.matcher(value).matches();
     }
 
     /**

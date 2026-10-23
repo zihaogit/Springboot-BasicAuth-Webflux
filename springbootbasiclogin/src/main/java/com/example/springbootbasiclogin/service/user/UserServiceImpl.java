@@ -1,8 +1,8 @@
 package com.example.springbootbasiclogin.service.user;
 
 import com.example.springbootbasiclogin.constant.AuthResponseCode;
-import com.example.springbootbasiclogin.dao.user.ChangePasswordRequest;
-import com.example.springbootbasiclogin.dao.user.UserProfileUpdateRequest;
+import com.example.springbootbasiclogin.dto.user.ChangePasswordRequest;
+import com.example.springbootbasiclogin.dto.user.UserProfileUpdateRequest;
 import com.example.springbootbasiclogin.entity.Users;
 import com.example.springbootbasiclogin.exception.CustomException;
 import com.example.springbootbasiclogin.repo.RoleRepository;
@@ -40,8 +40,8 @@ public class UserServiceImpl implements UserService {
     @Override
     public Flux<Users> findAll(int page, int size) {
         int limit = Math.min(Math.max(size, 1), 100);
-        int offset = Math.max(page, 0) * limit;
-        return userRepository.findAll().skip(offset).take(limit);
+        long offset = (long) Math.max(page, 0) * limit;
+        return userRepository.findAllPaginated(limit, offset);
     }
 
     @Override
@@ -111,7 +111,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Mono<Users> update(int id, Users theUser) {
-        return userRepository.findById(id)
+        return verifyAdmin()
+                .then(userRepository.findById(id))
                 .switchIfEmpty(Mono.error(new CustomException(AuthResponseCode.AUTH_000404_NOT_FOUND)))
                 .flatMap(existingUser -> {
                     updateCredentials(existingUser, theUser);
@@ -122,6 +123,21 @@ public class UserServiceImpl implements UserService {
                     existingUser.setId(id);
                     return userRepository.save(existingUser);
                 });
+    }
+
+    private Mono<Void> verifyAdmin() {
+        return ReactiveSecurityContextHolder.getContext()
+                .map(SecurityContext::getAuthentication)
+                .flatMap(auth -> {
+                    boolean isAdmin = auth.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equalsIgnoreCase("ROLE_ADMIN") || a.getAuthority().equalsIgnoreCase("ADMIN"));
+                    if (isAdmin) {
+                        return Mono.empty();
+                    }
+                    return Mono.error(new CustomException(AuthResponseCode.AUTH_000403_ACCESS_DENIED));
+                })
+                .switchIfEmpty(Mono.error(new CustomException(AuthResponseCode.AUTH_000401_UNAUTHORIZED)))
+                .then();
     }
 
     private void updateCredentials(Users existingUser, Users theUser) {

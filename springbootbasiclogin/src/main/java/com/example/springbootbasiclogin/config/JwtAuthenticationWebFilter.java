@@ -26,9 +26,12 @@ public class JwtAuthenticationWebFilter implements WebFilter {
     public static final String ROLE_PREFIX = "ROLE_";
 
     private final JwtService jwtService;
+    private final com.example.springbootbasiclogin.service.auth.AuthCookieService authCookieService;
 
-    public JwtAuthenticationWebFilter(JwtService jwtService) {
+    public JwtAuthenticationWebFilter(JwtService jwtService,
+                                     com.example.springbootbasiclogin.service.auth.AuthCookieService authCookieService) {
         this.jwtService = jwtService;
+        this.authCookieService = authCookieService;
     }
 
     @Override
@@ -39,10 +42,7 @@ public class JwtAuthenticationWebFilter implements WebFilter {
         if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
             token = authHeader.substring(BEARER_PREFIX.length()).trim();
         } else {
-            org.springframework.http.HttpCookie cookie = exchange.getRequest().getCookies().getFirst("access_token");
-            if (cookie != null && !cookie.getValue().isBlank()) {
-                token = cookie.getValue();
-            }
+            token = authCookieService.extractAccessToken(exchange).orElse(null);
         }
 
         if (token != null) {

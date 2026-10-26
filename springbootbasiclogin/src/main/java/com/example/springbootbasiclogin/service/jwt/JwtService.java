@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -32,14 +31,15 @@ public class JwtService {
         this.applicationProperties = applicationProperties;
         String secret = applicationProperties.getAuth().getJwt().getSecret();
         if (secret == null || secret.isBlank()) {
-            throw new CustomException(AuthResponseCode.AUTH_000105_INVALID_SECRET_KEY, "JWT secret cannot be null or empty.");
+            throw new CustomException(AuthResponseCode.AUTH_000105_INVALID_SECRET_KEY,
+                    "JWT secret cannot be null or empty.");
         }
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (secretBytes.length < MIN_KEY_BYTES) {
             throw new CustomException(AuthResponseCode.AUTH_000105_INVALID_SECRET_KEY,
                     "JWT secret must be at least " + MIN_KEY_BYTES
-                    + " bytes (256 bits) for HMAC-SHA-256 security. Configured secret is only "
-                    + secretBytes.length + " bytes.");
+                            + " bytes (256 bits) for HMAC-SHA-256 security. Configured secret is only "
+                            + secretBytes.length + " bytes.");
         }
         this.secretKey = Keys.hmacShaKeyFor(secretBytes);
         this.jwtParser = Jwts.parser().verifyWith(this.secretKey).build();

@@ -30,6 +30,7 @@ public class DatabaseConfig {
                 )
                 .locations(flywayProperties.getLocations().toArray(String[]::new))
                 .baselineOnMigrate(flywayProperties.getBaselineOnMigrate())
+                .ignoreMigrationPatterns("*:missing")
                 .load();
     }
 

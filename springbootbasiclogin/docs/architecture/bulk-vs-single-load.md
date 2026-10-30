@@ -1,6 +1,6 @@
 # Bulk Load vs Single Load Architecture
 
-> **Status:** Proposed  
+> **Status:** Implemented  
 > **Date:** 2026-10-25  
 > **Author:** Development Team
 
@@ -424,6 +424,11 @@ To test Kafka and view messages completely for free without cloud quotas, a loca
    - Monitor consumer lag across partitions.
    - Inspect payloads, headers, and error stack traces.
    - Manually produce test messages to verify consumers.
+
+4. **Postman Smoke Testing Collection:**
+   - Pre-configured requests and test scripts are available in [`postman/Springboot-BasicAuth-Webflux.postman_collection.json`](file:///C:/Users/Laggerbomb/OneDrive/Documents/Default%20Project/Springboot-BasicAuth-Webflux/postman/Springboot-BasicAuth-Webflux.postman_collection.json) under folder **Bulk Load (Kafka)**.
+   - Includes single load, bulk load with idempotency key, validation error handling (`continueOnError: true`), status polling, and unauthorized role checks.
+   - Test scripts automatically capture the `jobId` and store it in collection variables for subsequent status queries.
 
 ---
 

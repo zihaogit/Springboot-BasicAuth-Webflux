@@ -1,0 +1,1135 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Webflux Assignment",
+    "description": "API collection for Spring Boot WebFlux basic auth with email OTP verification and JWT tokens.\n\nFlow:\n1. Register with email \u2192 OTP is logged in app console (mail.host=log)\n2. Verify email with GET /auths/verify-email?verifyOTP={otp}\n3. Login with Basic Auth header \u2192 returns JWT access & refresh tokens\n4. Use Bearer token or Basic Auth to call user endpoints\n5. Forget password \u2192 GET token from logs \u2192 POST /auths/reset-password\n\nOTP expires in 5 minutes.\n\nPre-seeded Accounts:\n- Admin (ADMIN): admin / admin12345\n- John Doe (USER): JohnDoe / kX9#mQ2$vL7p",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "username",
+      "value": "alice"
+    },
+    {
+      "key": "password",
+      "value": "secret123"
+    },
+    {
+      "key": "email",
+      "value": "alice@example.com"
+    },
+    {
+      "key": "role",
+      "value": "USER"
+    },
+    {
+      "key": "verifyOTP",
+      "value": "123456",
+      "description": "6-digit OTP from app logs. Update before running Verify Email."
+    },
+    {
+      "key": "verificationToken",
+      "value": "",
+      "description": "UUID token from app logs after Forget Password. Update before running Reset Password."
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "description": "Populated after Login. Use as Bearer token."
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "description": "Populated after Login. Use in Refresh Token request."
+    },
+    {
+      "key": "userId",
+      "value": "16",
+      "description": "User ID for user-management endpoints (16 = John Doe)."
+    },
+    {
+      "key": "basicAuthUser",
+      "value": "admin",
+      "description": "Admin username for Basic Auth."
+    },
+    {
+      "key": "basicAuthPass",
+      "value": "admin12345",
+      "description": "Admin password for Basic Auth."
+    },
+    {
+      "key": "johnAuthUser",
+      "value": "JohnDoe",
+      "description": "Pre-seeded USER role account username."
+    },
+    {
+      "key": "johnAuthPass",
+      "value": "kX9#mQ2$vL7p",
+      "description": "Pre-seeded USER role account password."
+    },
+    {
+      "key": "authCode",
+      "value": "paste-auth-code-here",
+      "description": "Authorization code returned in redirect query parameter from FusionAuth callback."
+    },
+    {
+      "key": "jobId",
+      "value": "",
+      "description": "Bulk job UUID returned from POST /api/users/bulk. Auto-populated by test script."
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "test-bulk-001",
+      "description": "Optional idempotency key for bulk load deduplication."
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (email only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "register"
+              ]
+            },
+            "description": "Register a new user with email. A 6-digit OTP is sent via email (or logged to console when mail.host=log).\n\nRequired fields: username, password, role, email.\nIf the user already exists but is unverified, a new OTP is re-sent."
+          },
+          "response": []
+        },
+        {
+          "name": "Register (email + phone)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"email\": \"{{email}}\",\n  \"phone\": \"+60123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "register"
+              ]
+            },
+            "description": "Register with both email and phone. Email is required. The phone field is stored but OTP is still sent via email channel."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Verification Email (re-register)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"{{role}}\",\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "register"
+              ]
+            },
+            "description": "Re-send the verification OTP for an unverified user.\n\nCalling POST /auths/register with an existing username that is not yet verified will regenerate and re-send the OTP. Check app logs for the new OTP."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/verify-email?verifyOTP={{verifyOTP}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "verify-email"
+              ],
+              "query": [
+                {
+                  "key": "verifyOTP",
+                  "value": "{{verifyOTP}}",
+                  "description": "6-digit OTP from app logs or MailDev inbox."
+                }
+              ]
+            },
+            "description": "Verify the user's email using the 6-digit OTP received after registration.\n\nUpdate the `verifyOTP` collection variable with the OTP from app logs before sending."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Admin (Basic Auth)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "login"
+              ]
+            },
+            "description": "Login via HTTP Basic Auth header as Admin (admin / admin12345). Returns JWT accessToken and refreshToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as John Doe (USER role)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{johnAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{johnAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "login"
+              ]
+            },
+            "description": "Login as seeded USER role account (John Doe: JohnDoe / kX9#mQ2$vL7p) via HTTP Basic Auth header. Returns JWT accessToken and refreshToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (JSON body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{basicAuthUser}}\",\n  \"password\": \"{{basicAuthPass}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "login"
+              ]
+            },
+            "description": "Login via JSON request body. Returns JWT accessToken and refreshToken."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "refresh"
+              ]
+            },
+            "description": "Exchange a valid refresh token for a new access token + refresh token pair.\n\nUpdate the `refreshToken` collection variable with the refresh token returned from Login."
+          },
+          "response": []
+        },
+        {
+          "name": "Forget Password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/fp?email={{email}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "fp"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}",
+                  "description": "Registered email address to send the reset password token to."
+                }
+              ]
+            },
+            "description": "Request a password reset for the given email address.\n\nA reset `verificationToken` (UUID) is sent via email or logged to the console. Copy it into the `verificationToken` collection variable, then use Reset Password."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationToken\": \"{{verificationToken}}\",\n  \"password\": \"newSecret123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "reset-password"
+              ]
+            },
+            "description": "Reset the user's password using the verificationToken UUID from the Forget Password step.\n\nUpdate the `verificationToken` collection variable with the UUID from app logs before sending."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "logout"
+              ]
+            },
+            "description": "Logout the authenticated user. Requires Basic Auth or Bearer token.\n\nSets the user's `active` flag to false and clears the security context."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get all users (ADMIN)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "all"
+              ]
+            },
+            "description": "List all registered users. Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?userId={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Get a single user by id. Requires USER or ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"about\": \"Updated profile\",\n  \"jobTitle\": \"Senior Engineer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/update?userId={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "update"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Partial update of user fields. Null/omitted fields are skipped. Requires USER or ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete user (ADMIN)",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?userId={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Delete a user along with their roles and OTP records. Requires ADMIN role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Social Login",
+      "description": "Endpoints for FusionAuth Identity Provider Federation (Google, Facebook, X/Twitter, etc.)",
+      "item": [
+        {
+          "name": "Get Google Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/url?provider=google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "google"
+                }
+              ]
+            },
+            "description": "Returns the authorize URL with idp_hint set for Google."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Facebook Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/url?provider=facebook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "facebook"
+                }
+              ]
+            },
+            "description": "Returns the authorize URL with idp_hint set for Facebook."
+          },
+          "response": []
+        },
+        {
+          "name": "Get X / Twitter Login URL",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/url?provider=x",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "url"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "x"
+                }
+              ]
+            },
+            "description": "Returns the authorize URL with idp_hint mapped to Twitter."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Google Login (Browser Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/login?provider=google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "google"
+                }
+              ]
+            },
+            "description": "HTTP 302 redirect to FusionAuth/Google OAuth screen."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate Facebook Login (Browser Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/login?provider=facebook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "facebook"
+                }
+              ]
+            },
+            "description": "HTTP 302 redirect to FusionAuth/Facebook login screen."
+          },
+          "response": []
+        },
+        {
+          "name": "Initiate X / Twitter Login (Browser Redirect)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/login?provider=x",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "login"
+              ],
+              "query": [
+                {
+                  "key": "provider",
+                  "value": "x"
+                }
+              ]
+            },
+            "description": "HTTP 302 redirect to FusionAuth/X login screen."
+          },
+          "response": []
+        },
+        {
+          "name": "Social Callback (GET)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/callback?code={{authCode}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "callback"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "{{authCode}}"
+                }
+              ]
+            },
+            "description": "Standard browser redirect callback with auth code in query param."
+          },
+          "response": []
+        },
+        {
+          "name": "Social Callback (POST JSON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{authCode}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auths/social/callback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auths",
+                "social",
+                "callback"
+              ]
+            },
+            "description": "SPA / Mobile app endpoint sending auth code in JSON body."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bulk Load (Kafka)",
+      "description": "Endpoints for bulk user load via asynchronous UUID pattern with Kafka processing.\n\nFlow:\n1. POST /api/users/bulk with ADMIN Basic Auth -> 202 Accepted + jobId\n2. GET /api/jobs/{jobId} to poll status -> ACCEPTED -> PROCESSING -> COMPLETED/PARTIAL/FAILED\n3. Check Kafka-UI at http://localhost:8085 for message flow\n\nSingle Load comparison:\n- POST /api/users -> 201 Created (synchronous, no Kafka)\n\nSee docs/architecture/bulk-vs-single-load.md for architecture details.",
+      "item": [
+        {
+          "name": "Single User Load",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "Single Load lane: Synchronous/Reactive user creation via POST /api/users.\n\nReturns 201 Created with the user object. This endpoint is public (no Admin role required).\n\nRequest Body:\n- username (required)\n- password (required)\n- email (required, valid email format)"
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Bulk Job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('jobId', json.jobId);",
+                  "    pm.test('Bulk job accepted - jobId saved', function () {",
+                  "        pm.expect(json.jobId).to.be.a('string');",
+                  "        pm.expect(json.status).to.eql('ACCEPTED');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Idempotency-Key",
+                "value": "{{idempotencyKey}}",
+                "description": "Optional. Prevents duplicate job submission when retrying."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"options\": {\n    \"continueOnError\": true\n  },\n  \"records\": [\n    {\n      \"clientRefId\": \"CSV-ROW-001\",\n      \"username\": \"bulkuser1\",\n      \"password\": \"BulkPass123!\",\n      \"email\": \"bulkuser1@example.com\"\n    },\n    {\n      \"clientRefId\": \"CSV-ROW-002\",\n      \"username\": \"bulkuser2\",\n      \"password\": \"BulkPass456!\",\n      \"email\": \"bulkuser2@example.com\"\n    },\n    {\n      \"clientRefId\": \"CSV-ROW-003\",\n      \"username\": \"bulkuser3\",\n      \"password\": \"BulkPass789!\",\n      \"email\": \"bulkuser3@example.com\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "bulk"
+              ]
+            },
+            "description": "Bulk Load lane: Asynchronous UUID pattern (ADMIN only).\n\nReturns 202 Accepted with a jobId UUID immediately. The job is dispatched to Kafka (profile=kafka) or processed in-memory (profile=!kafka).\n\nHeaders:\n- X-Idempotency-Key (optional): Prevents duplicate job submission on retry.\n\nRequest Body:\n- options.continueOnError (boolean): If true, processing continues even if some records fail.\n- records[]: Array of user objects (max 500).\n  - clientRefId (optional): Your reference ID for tracing.\n  - username (required)\n  - password (required, min 6 chars)\n  - email (required, valid format)\n\nRequires: Basic Auth with ADMIN credentials.\nThe test script auto-saves the returned jobId to the collection variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Bulk Job (no idempotency key)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "    const json = pm.response.json();",
+                  "    pm.collectionVariables.set('jobId', json.jobId);",
+                  "    pm.test('Bulk job accepted - jobId saved', function () {",
+                  "        pm.expect(json.jobId).to.be.a('string');",
+                  "        pm.expect(json.status).to.eql('ACCEPTED');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"options\": {\n    \"continueOnError\": true\n  },\n  \"records\": [\n    {\n      \"clientRefId\": \"BATCH-2-ROW-001\",\n      \"username\": \"batchuser1\",\n      \"password\": \"BatchPass123!\",\n      \"email\": \"batchuser1@example.com\"\n    },\n    {\n      \"clientRefId\": \"BATCH-2-ROW-002\",\n      \"username\": \"batchuser2\",\n      \"password\": \"BatchPass456!\",\n      \"email\": \"batchuser2@example.com\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "bulk"
+              ]
+            },
+            "description": "Same as Submit Bulk Job but without X-Idempotency-Key header. Each call creates a new job regardless of payload."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Bulk Job (validation errors)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should return 400 or 202 with validation errors in job status', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([202, 400]);",
+                  "    if (pm.response.code === 202) {",
+                  "        const json = pm.response.json();",
+                  "        pm.collectionVariables.set('jobId', json.jobId);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"options\": {\n    \"continueOnError\": true\n  },\n  \"records\": [\n    {\n      \"clientRefId\": \"BAD-ROW-001\",\n      \"username\": \"\",\n      \"password\": \"short\",\n      \"email\": \"not-an-email\"\n    },\n    {\n      \"clientRefId\": \"GOOD-ROW-002\",\n      \"username\": \"validuser\",\n      \"password\": \"ValidPass123!\",\n      \"email\": \"valid@example.com\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "bulk"
+              ]
+            },
+            "description": "Tests bulk load with intentional validation errors: blank username, short password, invalid email. With continueOnError=true, the valid record should still be processed. Check job status for row-level errors."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Job status response is valid', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.jobId).to.be.a('string');",
+                  "    pm.expect(json.status).to.be.oneOf(['ACCEPTED', 'PROCESSING', 'COMPLETED', 'PARTIAL', 'FAILED']);",
+                  "    pm.expect(json.totalRecords).to.be.a('number');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{basicAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{basicAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/jobs/{{jobId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "jobs",
+                "{{jobId}}"
+              ]
+            },
+            "description": "Poll the status of a bulk job by jobId (ADMIN only).\n\nUpdate the jobId collection variable first (auto-populated by Submit Bulk Job test script).\n\nResponse fields:\n- jobId: UUID of the job\n- status: ACCEPTED | PROCESSING | COMPLETED | PARTIAL | FAILED\n- submittedBy: Admin username\n- submittedAt / completedAt: Timestamps\n- totalRecords / successCount / failCount: Counters\n- errors[]: Row-level error details with index, clientRefId, field, message"
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Bulk Job (Unauthorized - USER role)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Should be forbidden for non-admin', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{johnAuthUser}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{johnAuthPass}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"records\": [\n    {\n      \"username\": \"shouldfail\",\n      \"password\": \"password123\",\n      \"email\": \"shouldfail@example.com\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "bulk"
+              ]
+            },
+            "description": "Negative test: Attempt bulk load with a USER role account. Should return 401/403 Forbidden."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-﻿package com.example.springbootbasiclogin.service.jwt;
+package com.example.springbootbasiclogin.service.jwt;
 
 import com.example.springbootbasiclogin.config.ApplicationPropertiesConfig;
 import io.jsonwebtoken.Claims;

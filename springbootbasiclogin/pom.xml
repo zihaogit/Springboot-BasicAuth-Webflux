@@ -9,10 +9,10 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example</groupId>
-    <artifactId>springbootbasiclogin</artifactId>
+    <artifactId>springboot-reactive-iam-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>springbootbasiclogin</name>
-    <description>Springboot-BasicAuth-Webflux</description>
+    <name>springboot-reactive-iam-service</name>
+    <description>Spring Boot Reactive IAM Microservice (WebFlux, R2DBC, Redis, Apache Kafka, FusionAuth)</description>
     <properties>
         <java.version>25</java.version>
     </properties>
@@ -121,6 +121,12 @@
             <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- Apache Kafka -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

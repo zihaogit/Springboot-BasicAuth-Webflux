@@ -4,6 +4,7 @@ import com.example.springbootbasiclogin.repo.ProcessedWebhookEventRepository;
 import com.example.springbootbasiclogin.repo.RoleRepository;
 import com.example.springbootbasiclogin.repo.UserRepository;
 import com.example.springbootbasiclogin.repo.VerificationTokenRepository;
+import com.example.springbootbasiclogin.service.bulk.BulkJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 
 import org.springframework.validation.annotation.Validated;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
@@ -28,6 +30,7 @@ public class InternalJobController {
     private final ProcessedWebhookEventRepository webhookEventRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final BulkJobService bulkJobService;
 
     /**
      * Job 1: Clean up expired OTP tokens older than 24 hours.
@@ -107,5 +110,31 @@ public class InternalJobController {
                             "cutoffTime", cutoff.toString()
                     ));
                 });
+    }
+
+    /**
+     * Job 4: Sweeper/Reaper for bulk jobs stuck in PROCESSING longer than 30 minutes.
+     */
+    @PostMapping("/cleanup-stuck-bulk-jobs")
+    public Mono<ResponseEntity<Map<String, Object>>> cleanupStuckBulkJobs() {
+        Duration maxDuration = Duration.ofMinutes(30);
+        log.info("Job [cleanup-stuck-bulk-jobs]: searching for jobs in PROCESSING > 30 minutes");
+
+        return bulkJobService.cleanupStuckJobs(maxDuration)
+                .map(markedCount -> {
+                    log.info("Job [cleanup-stuck-bulk-jobs]: Marked {} stuck bulk job(s) as FAILED", markedCount);
+                    return ResponseEntity.ok(Map.<String, Object>of(
+                            "status", "SUCCESS",
+                            "job", "cleanup-stuck-bulk-jobs",
+                            "updatedRecords", markedCount,
+                            "maxDurationMinutes", maxDuration.toMinutes()
+                    ));
+                })
+                .defaultIfEmpty(ResponseEntity.ok(Map.<String, Object>of(
+                        "status", "SUCCESS",
+                        "job", "cleanup-stuck-bulk-jobs",
+                        "updatedRecords", 0,
+                        "maxDurationMinutes", maxDuration.toMinutes()
+                )));
     }
 }

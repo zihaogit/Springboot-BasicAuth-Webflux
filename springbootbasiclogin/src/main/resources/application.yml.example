@@ -4,6 +4,8 @@
 # ==============================================================================
 
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:kafka}
   r2dbc:
     username: ${POSTGRES_USER:postgres}
     password: ${POSTGRES_PASSWORD:root}
@@ -81,3 +83,28 @@ auth:
     rate-limit:
       max-attempts: ${FUSIONAUTH_WEBHOOK_RATE_LIMIT_MAX:100}
       window-seconds: ${FUSIONAUTH_WEBHOOK_RATE_LIMIT_WINDOW:60}
+
+---
+# Kafka Profile Configuration (enable via SPRING_PROFILES_ACTIVE=kafka)
+spring:
+  config:
+    activate:
+      on-profile: kafka
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:bulk-job-group}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+app:
+  kafka:
+    topics:
+      bulk-jobs: ${KAFKA_TOPIC_BULK_JOBS:bulk-jobs}
+      bulk-jobs-dlq: ${KAFKA_TOPIC_BULK_JOBS_DLQ:bulk-jobs-dead-letter}

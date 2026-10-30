@@ -72,7 +72,7 @@ public class SecurityConfig {
                             .pathMatchers(
                                     "/auths/register", "/auths/verify-email", "/auths/verify-email/**",
                                     "/auths/fp", "/auths/reset-password", "/auths/login", "/auths/refresh",
-                                    "/auths/social/**", "/webhooks/**"
+                                    "/auths/social/**", "/webhooks/**", "/api/users"
                             ).permitAll();
 
                     if (applicationProperties.getSpringdoc().getSwaggerUi().isEnabled()) {
@@ -81,7 +81,7 @@ public class SecurityConfig {
                         authz.pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/webjars/**").hasRole("ADMIN");
                     }
 
-                    authz.pathMatchers("/internal/**").hasRole("ADMIN")
+                    authz.pathMatchers("/internal/**", "/api/users/bulk", "/api/jobs/**").hasRole("ADMIN")
                             .anyExchange().authenticated();
                 })
                 .addFilterAt(jwtAuthenticationWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
